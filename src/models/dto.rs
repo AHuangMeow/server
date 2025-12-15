@@ -31,11 +31,26 @@ pub struct UpdatePasswordRequest {
 
 #[derive(Debug, Serialize)]
 pub struct AuthResponse {
+    pub code: usize,
+    pub msg: String,
     pub token: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ResultResponse {
+    pub code: usize,
+    pub msg: String,
 }
 
 #[derive(Debug, Serialize)]
 pub struct UserProfile {
     pub email: String,
     pub username: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GetMeResponse {
+    pub code: usize,
+    pub msg: String,
+    pub data: UserProfile,
 }

@@ -29,7 +29,7 @@ pub fn verify_password(hash: &str, plain: &str) -> Result<(), AppError> {
     let parsed = PasswordHash::new(hash).map_err(|_| AppError::Internal)?;
     Argon2::default()
         .verify_password(plain.as_bytes(), &parsed)
-        .map_err(|_| AppError::Unauthorized)
+        .map_err(|_| AppError::Unauthorized("invalid username or password".into()))
 }
 
 pub fn generate_token(cfg: &AppConfig, user_id: &str) -> Result<String, AppError> {
@@ -54,7 +54,7 @@ pub fn decode_token(cfg: &AppConfig, token: &str) -> Result<Claims, AppError> {
         &Validation::default(),
     )
     .map(|data| data.claims)
-    .map_err(|_| AppError::Unauthorized)
+    .map_err(|_| AppError::Unauthorized("authentication required".into()))
 }
 
 #[derive(Clone)]
@@ -81,10 +81,10 @@ impl FromRequest for AuthenticatedUser {
                     Ok(claims) => Ok(AuthenticatedUser {
                         user_id: claims.sub,
                     }),
-                    Err(_) => Err(AppError::Unauthorized.into()),
+                    Err(_) => Err(AppError::Unauthorized("authentication required".into()).into()),
                 }
             }
-            _ => Err(AppError::Unauthorized.into()),
+            _ => Err(AppError::Unauthorized("authentication required".into()).into()),
         })
     }
 }

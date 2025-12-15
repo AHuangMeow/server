@@ -1,7 +1,10 @@
 use crate::{
     auth::{AuthenticatedUser, hash_password, verify_password},
     errors::AppError,
-    models::dto::{UpdateEmailRequest, UpdatePasswordRequest, UpdateUsernameRequest, UserProfile},
+    models::dto::{
+        GetMeResponse, ResultResponse, UpdateEmailRequest, UpdatePasswordRequest,
+        UpdateUsernameRequest, UserProfile,
+    },
 };
 use actix_web::{HttpResponse, get, put, web};
 use mongodb::{
@@ -9,18 +12,19 @@ use mongodb::{
     bson::{DateTime, doc, oid::ObjectId},
 };
 
-#[get("/user/me")]
+#[get("/me")]
 pub async fn get_me(
     db: web::Data<Database>,
     user: AuthenticatedUser,
 ) -> Result<HttpResponse, AppError> {
     let users = db.collection::<mongodb::bson::Document>("users");
-    let uid = ObjectId::parse_str(&user.user_id).map_err(|_| AppError::Unauthorized)?;
+    let uid = ObjectId::parse_str(&user.user_id)
+        .map_err(|_| AppError::Unauthorized("failed to parse user id".into()))?;
     let doc = users
         .find_one(doc! { "_id": uid })
         .await
         .map_err(|_| AppError::Internal)?
-        .ok_or(AppError::Unauthorized)?;
+        .ok_or(AppError::Unauthorized("failed to find a user".into()))?;
 
     let email = doc
         .get_str("email")
@@ -31,10 +35,14 @@ pub async fn get_me(
         .map_err(|_| AppError::Internal)?
         .to_string();
 
-    Ok(HttpResponse::Ok().json(UserProfile { email, username }))
+    Ok(HttpResponse::Ok().json(GetMeResponse {
+        code: 200,
+        msg: "successfully fetched user profile".into(),
+        data: UserProfile { email, username },
+    }))
 }
 
-#[put("/user/email")]
+#[put("/email")]
 async fn update_email(
     db: web::Data<Database>,
     user: AuthenticatedUser,
@@ -48,61 +56,67 @@ async fn update_email(
         .map_err(|_| AppError::Internal)?
         .is_some()
     {
-        return Err(AppError::BadRequest("Email exists".into()));
+        return Err(AppError::Conflict("email already registered".into()));
     }
     users
         .update_one(
-            doc! { "_id": ObjectId::parse_str(&user.user_id).map_err(|_| AppError::Unauthorized)? },
+            doc! { "_id": ObjectId::parse_str(&user.user_id).map_err(|_| AppError::Unauthorized("failed to parse user id".into()))? },
             doc! { "$set": { "email": &payload.new_email, "updated_at": DateTime::now() } },
         )
         .await
         .map_err(|_| AppError::Internal)?;
-    Ok(HttpResponse::Ok().finish())
+    Ok(HttpResponse::Ok().json(ResultResponse {
+        code: 200,
+        msg: "successfully updated email".into(),
+    }))
 }
 
-#[put("/user/username")]
+#[put("/username")]
 async fn update_username(
     db: web::Data<Database>,
     user: AuthenticatedUser,
     payload: web::Json<UpdateUsernameRequest>,
 ) -> Result<HttpResponse, AppError> {
     let users = db.collection::<mongodb::bson::Document>("users");
-    if users
-        .find_one(doc! { "username": &payload.new_username })
-        .await
-        .map_err(|_| AppError::Internal)?
-        .is_some()
-    {
-        return Err(AppError::BadRequest("Username exists".into()));
-    }
+
     users
         .update_one(
-            doc! { "_id": ObjectId::parse_str(&user.user_id).map_err(|_| AppError::Unauthorized)? },
+            doc! { "_id": ObjectId::parse_str(&user.user_id).map_err(|_| AppError::Unauthorized("failed to parse user id".into()))? },
             doc! { "$set": { "username": &payload.new_username, "updated_at": DateTime::now() } },
         )
         .await
         .map_err(|_| AppError::Internal)?;
-    Ok(HttpResponse::Ok().finish())
+    Ok(HttpResponse::Ok().json(ResultResponse {
+        code: 200,
+        msg: "successfully updated username".into(),
+    }))
 }
 
-#[put("/user/password")]
+#[put("/password")]
 async fn update_password(
     db: web::Data<Database>,
     user: AuthenticatedUser,
     payload: web::Json<UpdatePasswordRequest>,
 ) -> Result<HttpResponse, AppError> {
     let users = db.collection::<mongodb::bson::Document>("users");
-    let uid = ObjectId::parse_str(&user.user_id).map_err(|_| AppError::Unauthorized)?;
+    let uid = ObjectId::parse_str(&user.user_id)
+        .map_err(|_| AppError::Unauthorized("failed to parse user id".into()))?;
     let current = users
         .find_one(doc! { "_id": &uid })
         .await
         .map_err(|_| AppError::Internal)?
-        .ok_or(AppError::Unauthorized)?;
+        .ok_or(AppError::Unauthorized("failed to find a user".into()))?;
     let hash: String = current
         .get_str("password_hash")
         .map_err(|_| AppError::Internal)?
         .into();
-    verify_password(&hash, &payload.old_password)?;
+    verify_password(&hash, &payload.old_password)
+        .map_err(|_| AppError::Unauthorized("invalid old password".into()))?;
+    if payload.new_password.len() < 8 {
+        return Err(AppError::UnprocessableEntity(
+            "password length must be at least 8".into(),
+        ));
+    }
     let new_hash = hash_password(&payload.new_password)?;
     users
         .update_one(
@@ -111,11 +125,14 @@ async fn update_password(
         )
         .await
         .map_err(|_| AppError::Internal)?;
-    Ok(HttpResponse::Ok().finish())
+    Ok(HttpResponse::Ok().json(ResultResponse {
+        code: 200,
+        msg: "successfully updated password".into(),
+    }))
 }
 
 pub fn user_scope() -> actix_web::Scope {
-    web::scope("")
+    web::scope("/user")
         .service(get_me)
         .service(update_email)
         .service(update_username)

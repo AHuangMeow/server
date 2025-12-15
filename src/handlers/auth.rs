@@ -2,7 +2,7 @@ use crate::{
     auth::{AuthenticatedUser, generate_token, hash_password, verify_password},
     config::AppConfig,
     errors::AppError,
-    models::dto::{AuthResponse, LoginRequest, RegisterRequest},
+    models::dto::{AuthResponse, LoginRequest, RegisterRequest, ResultResponse},
 };
 use actix_web::{HttpResponse, post, web};
 use mongodb::{
@@ -10,13 +10,12 @@ use mongodb::{
     bson::{DateTime, doc, oid::ObjectId},
 };
 
-#[post("/auth/register")]
+#[post("/register")]
 async fn register(
     db: web::Data<Database>,
     cfg: web::Data<AppConfig>,
     payload: web::Json<RegisterRequest>,
 ) -> Result<HttpResponse, AppError> {
-    // 唯一性检查
     let users = db.collection::<mongodb::bson::Document>("users");
     if users
         .find_one(doc! { "email": &payload.email })
@@ -24,15 +23,13 @@ async fn register(
         .map_err(|_| AppError::Internal)?
         .is_some()
     {
-        return Err(AppError::BadRequest("Email exists".into()));
+        return Err(AppError::Conflict("email already registered".into()));
     }
-    if users
-        .find_one(doc! { "username": &payload.username })
-        .await
-        .map_err(|_| AppError::Internal)?
-        .is_some()
-    {
-        return Err(AppError::BadRequest("Username exists".into()));
+
+    if payload.password.len() < 8 {
+        return Err(AppError::UnprocessableEntity(
+            "password length must be at least 8".into(),
+        ));
     }
 
     let hash = hash_password(&payload.password)?;
@@ -51,10 +48,14 @@ async fn register(
         .map_err(|_| AppError::Internal)?;
 
     let token = generate_token(&cfg, &user_id.to_hex())?;
-    Ok(HttpResponse::Ok().json(AuthResponse { token }))
+    Ok(HttpResponse::Ok().json(AuthResponse {
+        code: 200,
+        msg: "successfully registered".into(),
+        token,
+    }))
 }
 
-#[post("/auth/login")]
+#[post("/login")]
 async fn login(
     db: web::Data<Database>,
     cfg: web::Data<AppConfig>,
@@ -65,7 +66,9 @@ async fn login(
         .find_one(doc! { "email": &payload.email })
         .await
         .map_err(|_| AppError::Internal)?
-        .ok_or(AppError::Unauthorized)?;
+        .ok_or(AppError::Unauthorized(
+            "invalid username or password".into(),
+        ))?;
 
     let hash: String = user
         .get_str("password_hash")
@@ -78,17 +81,23 @@ async fn login(
         .map_err(|_| AppError::Internal)?
         .to_hex();
     let token = generate_token(&cfg, &id)?;
-    Ok(HttpResponse::Ok().json(AuthResponse { token }))
+    Ok(HttpResponse::Ok().json(AuthResponse {
+        code: 200,
+        msg: "successfully logged in".into(),
+        token,
+    }))
 }
 
-#[post("/auth/logout")]
+#[post("/logout")]
 async fn logout(_user: AuthenticatedUser) -> Result<HttpResponse, AppError> {
-    // 无状态 JWT: 前端删除 token；如需黑名单可在 DB 记录失效 token 或 jti
-    Ok(HttpResponse::Ok().finish())
+    Ok(HttpResponse::Ok().json(ResultResponse {
+        code: 200,
+        msg: "successfully logged out".into(),
+    }))
 }
 
 pub fn auth_scope() -> actix_web::Scope {
-    web::scope("")
+    web::scope("/auth")
         .service(register)
         .service(login)
         .service(logout)
