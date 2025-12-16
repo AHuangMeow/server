@@ -1,3 +1,4 @@
+use crate::constants::INVALID_USER_ID;
 use crate::models::dto::ResultResponse;
 
 use actix_web::{HttpResponse, ResponseError};
@@ -23,7 +24,7 @@ impl From<mongodb::error::Error> for AppError {
 
 impl From<mongodb::bson::oid::Error> for AppError {
     fn from(_: mongodb::bson::oid::Error) -> Self {
-        AppError::Unauthorized(crate::constants::messages::INVALID_USER_ID.into())
+        AppError::Unauthorized(INVALID_USER_ID.into())
     }
 }
 

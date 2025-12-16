@@ -1,6 +1,6 @@
 use crate::{
-    auth::{hash_password, verify_password, AuthenticatedUser},
-    constants::{messages, MIN_PASSWORD_LENGTH},
+    auth::{AuthenticatedUser, hash_password, verify_password},
+    constants::*,
     errors::AppError,
     models::dto::{
         GetMeResponse, ResultResponse, UpdateEmailRequest, UpdatePasswordRequest,
@@ -20,11 +20,11 @@ pub async fn get_me(
     let user_doc = user_repo
         .find_by_id(&uid)
         .await?
-        .ok_or(AppError::Unauthorized(messages::USER_NOT_FOUND.into()))?;
+        .ok_or(AppError::Unauthorized(USER_NOT_FOUND.into()))?;
 
     Ok(HttpResponse::Ok().json(GetMeResponse {
         code: 200,
-        msg: messages::PROFILE_FETCHED.into(),
+        msg: PROFILE_FETCHED.into(),
         data: UserProfile {
             email: user_doc.email,
             username: user_doc.username,
@@ -38,20 +38,16 @@ async fn update_email(
     user: AuthenticatedUser,
     payload: web::Json<UpdateEmailRequest>,
 ) -> Result<HttpResponse, AppError> {
-    if user_repo
-        .find_by_email(&payload.new_email)
-        .await?
-        .is_some()
-    {
-        return Err(AppError::Conflict(messages::EMAIL_ALREADY_EXISTS.into()));
+    if user_repo.find_by_email(&payload.new_email).await?.is_some() {
+        return Err(AppError::Conflict(EMAIL_ALREADY_EXISTS.into()));
     }
-    
+
     let uid = ObjectId::parse_str(&user.user_id)?;
     user_repo.update_email(&uid, &payload.new_email).await?;
-    
+
     Ok(HttpResponse::Ok().json(ResultResponse {
         code: 200,
-        msg: messages::EMAIL_UPDATED.into(),
+        msg: EMAIL_UPDATED.into(),
     }))
 }
 
@@ -62,11 +58,13 @@ async fn update_username(
     payload: web::Json<UpdateUsernameRequest>,
 ) -> Result<HttpResponse, AppError> {
     let uid = ObjectId::parse_str(&user.user_id)?;
-    user_repo.update_username(&uid, &payload.new_username).await?;
-    
+    user_repo
+        .update_username(&uid, &payload.new_username)
+        .await?;
+
     Ok(HttpResponse::Ok().json(ResultResponse {
         code: 200,
-        msg: messages::USERNAME_UPDATED.into(),
+        msg: USERNAME_UPDATED.into(),
     }))
 }
 
@@ -80,23 +78,21 @@ async fn update_password(
     let current = user_repo
         .find_by_id(&uid)
         .await?
-        .ok_or(AppError::Unauthorized(messages::USER_NOT_FOUND.into()))?;
-    
+        .ok_or(AppError::Unauthorized(USER_NOT_FOUND.into()))?;
+
     verify_password(&current.password_hash, &payload.old_password)
-        .map_err(|_| AppError::Unauthorized(messages::INVALID_OLD_PASSWORD.into()))?;
-    
+        .map_err(|_| AppError::Unauthorized(INVALID_OLD_PASSWORD.into()))?;
+
     if payload.new_password.len() < MIN_PASSWORD_LENGTH {
-        return Err(AppError::UnprocessableEntity(
-            messages::PASSWORD_TOO_SHORT.into(),
-        ));
+        return Err(AppError::UnprocessableEntity(PASSWORD_TOO_SHORT.into()));
     }
-    
+
     let new_hash = hash_password(&payload.new_password)?;
     user_repo.update_password(&uid, &new_hash).await?;
-    
+
     Ok(HttpResponse::Ok().json(ResultResponse {
         code: 200,
-        msg: messages::PASSWORD_UPDATED.into(),
+        msg: PASSWORD_UPDATED.into(),
     }))
 }
 

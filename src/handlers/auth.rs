@@ -1,9 +1,12 @@
 use crate::{
-    auth::{generate_token, hash_password, verify_password, AuthenticatedUser},
+    auth::{AuthenticatedUser, generate_token, hash_password, verify_password},
     config::AppConfig,
-    constants::{messages, MIN_PASSWORD_LENGTH},
+    constants::*,
     errors::AppError,
-    models::{dto::{AuthResponse, LoginRequest, RegisterRequest, ResultResponse}, user::User},
+    models::{
+        dto::{AuthResponse, LoginRequest, RegisterRequest, ResultResponse},
+        user::User,
+    },
     repository::UserRepository,
 };
 use actix_web::{HttpResponse, post, web};
@@ -15,18 +18,12 @@ async fn register(
     cfg: web::Data<AppConfig>,
     payload: web::Json<RegisterRequest>,
 ) -> Result<HttpResponse, AppError> {
-    if user_repo
-        .find_by_email(&payload.email)
-        .await?
-        .is_some()
-    {
-        return Err(AppError::Conflict(messages::EMAIL_ALREADY_EXISTS.into()));
+    if user_repo.find_by_email(&payload.email).await?.is_some() {
+        return Err(AppError::Conflict(EMAIL_ALREADY_EXISTS.into()));
     }
 
     if payload.password.len() < MIN_PASSWORD_LENGTH {
-        return Err(AppError::UnprocessableEntity(
-            messages::PASSWORD_TOO_SHORT.into(),
-        ));
+        return Err(AppError::UnprocessableEntity(PASSWORD_TOO_SHORT.into()));
     }
 
     let hash = hash_password(&payload.password)?;
@@ -45,7 +42,7 @@ async fn register(
     let token = generate_token(&cfg, &user_id.to_hex())?;
     Ok(HttpResponse::Ok().json(AuthResponse {
         code: 200,
-        msg: messages::REGISTER_SUCCESS.into(),
+        msg: REGISTER_SUCCESS.into(),
         token,
     }))
 }
@@ -59,9 +56,7 @@ async fn login(
     let user = user_repo
         .find_by_email(&payload.email)
         .await?
-        .ok_or(AppError::Unauthorized(
-            messages::INVALID_CREDENTIALS.into(),
-        ))?;
+        .ok_or(AppError::Unauthorized(INVALID_CREDENTIALS.into()))?;
 
     verify_password(&user.password_hash, &payload.password)?;
 
@@ -69,7 +64,7 @@ async fn login(
     let token = generate_token(&cfg, &id)?;
     Ok(HttpResponse::Ok().json(AuthResponse {
         code: 200,
-        msg: messages::LOGIN_SUCCESS.into(),
+        msg: LOGIN_SUCCESS.into(),
         token,
     }))
 }
@@ -78,7 +73,7 @@ async fn login(
 async fn logout(_user: AuthenticatedUser) -> Result<HttpResponse, AppError> {
     Ok(HttpResponse::Ok().json(ResultResponse {
         code: 200,
-        msg: messages::LOGOUT_SUCCESS.into(),
+        msg: LOGOUT_SUCCESS.into(),
     }))
 }
 
