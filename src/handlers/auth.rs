@@ -29,6 +29,7 @@ async fn register(
         email: payload.email.clone(),
         username: payload.username.clone(),
         password_hash: hash,
+        is_admin: false,
     };
     user_repo.create(&new_user).await?;
 

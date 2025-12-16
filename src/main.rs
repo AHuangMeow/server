@@ -9,7 +9,7 @@ mod repository;
 
 use crate::config::AppConfig;
 use crate::db::init_db;
-use crate::handlers::{auth_scope, user_scope};
+use crate::handlers::{admin_scope, auth_scope, user_scope};
 use crate::repository::UserRepository;
 use actix_web::web::Data;
 use actix_web::{App, HttpServer};
@@ -33,6 +33,7 @@ async fn main() -> Result<(), std::io::Error> {
             .app_data(Data::new(user_repo.clone()))
             .service(auth_scope())
             .service(user_scope())
+            .service(admin_scope())
     })
     .bind((host, port))?
     .run()

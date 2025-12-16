@@ -8,6 +8,8 @@ use thiserror::Error;
 pub enum AppError {
     #[error("Unauthorized: {0}")]
     Unauthorized(String),
+    #[error("Forbidden: {0}")]
+    Forbidden(String),
     #[error("Conflict: {0}")]
     Conflict(String),
     #[error("UnprocessableEntity: {0}")]
@@ -33,6 +35,10 @@ impl ResponseError for AppError {
         match self {
             AppError::Unauthorized(msg) => HttpResponse::Unauthorized().json(ResultResponse {
                 code: 401,
+                msg: msg.into(),
+            }),
+            AppError::Forbidden(msg) => HttpResponse::Forbidden().json(ResultResponse {
+                code: 403,
                 msg: msg.into(),
             }),
             AppError::Conflict(msg) => HttpResponse::Conflict().json(ResultResponse {

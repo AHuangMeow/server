@@ -23,6 +23,7 @@ pub const USER_NOT_FOUND: &str = "user not found";
 pub const AUTH_REQUIRED: &str = "authentication required";
 pub const INVALID_USER_ID: &str = "invalid user id";
 pub const PASSWORD_TOO_SHORT: &str = "password length must be at least 8";
+pub const PERMISSION_DENIED: &str = "permission denied";
 
 pub const MONGO_URI: &str = "MONGO_URI";
 pub const MONGO_DB: &str = "MONGO_DB";

@@ -54,3 +54,45 @@ pub struct GetMeResponse {
     pub msg: String,
     pub data: UserProfile,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct CreateUserRequest {
+    pub email: String,
+    pub username: String,
+    pub password: String,
+    pub is_admin: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateUserRequest {
+    pub email: Option<String>,
+    pub username: Option<String>,
+    pub password: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SetAdminRequest {
+    pub is_admin: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub struct UserInfo {
+    pub id: String,
+    pub email: String,
+    pub username: String,
+    pub is_admin: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub struct UserListResponse {
+    pub code: usize,
+    pub msg: String,
+    pub data: Vec<UserInfo>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct UserInfoResponse {
+    pub code: usize,
+    pub msg: String,
+    pub data: UserInfo,
+}
