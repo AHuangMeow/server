@@ -1,89 +1,75 @@
 use crate::{
-    auth::{AuthenticatedUser, generate_token, hash_password, verify_password},
+    auth::{generate_token, hash_password, verify_password, AuthenticatedUser},
     config::AppConfig,
+    constants::{messages, MIN_PASSWORD_LENGTH},
     errors::AppError,
-    models::dto::{AuthResponse, LoginRequest, RegisterRequest, ResultResponse},
+    models::{dto::{AuthResponse, LoginRequest, RegisterRequest, ResultResponse}, user::User},
+    repository::UserRepository,
 };
 use actix_web::{HttpResponse, post, web};
-use mongodb::{
-    Database,
-    bson::{DateTime, doc, oid::ObjectId},
-};
+use mongodb::bson::{DateTime, oid::ObjectId};
 
 #[post("/register")]
 async fn register(
-    db: web::Data<Database>,
+    user_repo: web::Data<UserRepository>,
     cfg: web::Data<AppConfig>,
     payload: web::Json<RegisterRequest>,
 ) -> Result<HttpResponse, AppError> {
-    let users = db.collection::<mongodb::bson::Document>("users");
-    if users
-        .find_one(doc! { "email": &payload.email })
-        .await
-        .map_err(|_| AppError::Internal)?
+    if user_repo
+        .find_by_email(&payload.email)
+        .await?
         .is_some()
     {
-        return Err(AppError::Conflict("email already registered".into()));
+        return Err(AppError::Conflict(messages::EMAIL_ALREADY_EXISTS.into()));
     }
 
-    if payload.password.len() < 8 {
+    if payload.password.len() < MIN_PASSWORD_LENGTH {
         return Err(AppError::UnprocessableEntity(
-            "password length must be at least 8".into(),
+            messages::PASSWORD_TOO_SHORT.into(),
         ));
     }
 
     let hash = hash_password(&payload.password)?;
     let now = DateTime::now();
     let user_id = ObjectId::new();
-    users
-        .insert_one(doc! {
-            "_id": &user_id,
-            "email": &payload.email,
-            "username": &payload.username,
-            "password_hash": hash,
-            "created_at": now,
-            "updated_at": now,
-        })
-        .await
-        .map_err(|_| AppError::Internal)?;
+    let new_user = User {
+        id: user_id,
+        email: payload.email.clone(),
+        username: payload.username.clone(),
+        password_hash: hash,
+        created_at: now,
+        updated_at: now,
+    };
+    user_repo.create(&new_user).await?;
 
     let token = generate_token(&cfg, &user_id.to_hex())?;
     Ok(HttpResponse::Ok().json(AuthResponse {
         code: 200,
-        msg: "successfully registered".into(),
+        msg: messages::REGISTER_SUCCESS.into(),
         token,
     }))
 }
 
 #[post("/login")]
 async fn login(
-    db: web::Data<Database>,
+    user_repo: web::Data<UserRepository>,
     cfg: web::Data<AppConfig>,
     payload: web::Json<LoginRequest>,
 ) -> Result<HttpResponse, AppError> {
-    let users = db.collection::<mongodb::bson::Document>("users");
-    let user = users
-        .find_one(doc! { "email": &payload.email })
-        .await
-        .map_err(|_| AppError::Internal)?
+    let user = user_repo
+        .find_by_email(&payload.email)
+        .await?
         .ok_or(AppError::Unauthorized(
-            "invalid username or password".into(),
+            messages::INVALID_CREDENTIALS.into(),
         ))?;
 
-    let hash: String = user
-        .get_str("password_hash")
-        .map_err(|_| AppError::Internal)?
-        .into();
-    verify_password(&hash, &payload.password)?;
+    verify_password(&user.password_hash, &payload.password)?;
 
-    let id = user
-        .get_object_id("_id")
-        .map_err(|_| AppError::Internal)?
-        .to_hex();
+    let id = user.id.to_hex();
     let token = generate_token(&cfg, &id)?;
     Ok(HttpResponse::Ok().json(AuthResponse {
         code: 200,
-        msg: "successfully logged in".into(),
+        msg: messages::LOGIN_SUCCESS.into(),
         token,
     }))
 }
@@ -92,7 +78,7 @@ async fn login(
 async fn logout(_user: AuthenticatedUser) -> Result<HttpResponse, AppError> {
     Ok(HttpResponse::Ok().json(ResultResponse {
         code: 200,
-        msg: "successfully logged out".into(),
+        msg: messages::LOGOUT_SUCCESS.into(),
     }))
 }
 

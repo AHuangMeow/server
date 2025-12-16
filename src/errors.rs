@@ -5,8 +5,6 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum AppError {
-    #[error("BadRequest: {0}")]
-    BadRequest(String),
     #[error("Unauthorized: {0}")]
     Unauthorized(String),
     #[error("Conflict: {0}")]
@@ -17,13 +15,21 @@ pub enum AppError {
     Internal,
 }
 
+impl From<mongodb::error::Error> for AppError {
+    fn from(_: mongodb::error::Error) -> Self {
+        AppError::Internal
+    }
+}
+
+impl From<mongodb::bson::oid::Error> for AppError {
+    fn from(_: mongodb::bson::oid::Error) -> Self {
+        AppError::Unauthorized(crate::constants::messages::INVALID_USER_ID.into())
+    }
+}
+
 impl ResponseError for AppError {
     fn error_response(&self) -> HttpResponse {
         match self {
-            AppError::BadRequest(msg) => HttpResponse::BadRequest().json(ResultResponse {
-                code: 400,
-                msg: msg.into(),
-            }),
             AppError::Unauthorized(msg) => HttpResponse::Unauthorized().json(ResultResponse {
                 code: 401,
                 msg: msg.into(),
