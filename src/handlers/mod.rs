@@ -1,2 +1,5 @@
-pub mod auth;
-pub mod user;
+mod auth;
+mod user;
+
+pub use auth::auth_scope;
+pub use user::user_scope;

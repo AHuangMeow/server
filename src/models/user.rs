@@ -1,4 +1,4 @@
-use mongodb::bson::{DateTime, oid::ObjectId};
+use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -8,6 +8,4 @@ pub struct User {
     pub email: String,
     pub username: String,
     pub password_hash: String,
-    pub created_at: DateTime,
-    pub updated_at: DateTime,
 }

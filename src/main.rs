@@ -7,13 +7,12 @@ mod handlers;
 mod models;
 mod repository;
 
-use crate::{
-    config::AppConfig,
-    db::init_db,
-    handlers::{auth::auth_scope, user::user_scope},
-    repository::UserRepository,
-};
-use actix_web::{App, HttpServer, web::Data};
+use crate::config::AppConfig;
+use crate::db::init_db;
+use crate::handlers::{auth_scope, user_scope};
+use crate::repository::UserRepository;
+use actix_web::web::Data;
+use actix_web::{App, HttpServer};
 
 #[actix_web::main]
 async fn main() -> Result<(), std::io::Error> {

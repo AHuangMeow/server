@@ -1,16 +1,12 @@
-use crate::{
-    auth::{AuthenticatedUser, generate_token, hash_password, verify_password},
-    config::AppConfig,
-    constants::*,
-    errors::AppError,
-    models::{
-        dto::{AuthResponse, LoginRequest, RegisterRequest, ResultResponse},
-        user::User,
-    },
-    repository::UserRepository,
-};
+use crate::auth::{AuthenticatedUser, generate_token, hash_password, verify_password};
+use crate::config::AppConfig;
+use crate::constants::*;
+use crate::errors::AppError;
+use crate::models::dto::{AuthResponse, LoginRequest, RegisterRequest, ResultResponse};
+use crate::models::user::User;
+use crate::repository::UserRepository;
 use actix_web::{HttpResponse, post, web};
-use mongodb::bson::{DateTime, oid::ObjectId};
+use mongodb::bson::oid::ObjectId;
 
 #[post("/register")]
 async fn register(
@@ -27,15 +23,12 @@ async fn register(
     }
 
     let hash = hash_password(&payload.password)?;
-    let now = DateTime::now();
     let user_id = ObjectId::new();
     let new_user = User {
         id: user_id,
         email: payload.email.clone(),
         username: payload.username.clone(),
         password_hash: hash,
-        created_at: now,
-        updated_at: now,
     };
     user_repo.create(&new_user).await?;
 

@@ -1,13 +1,8 @@
-use crate::{
-    auth::{AuthenticatedUser, hash_password, verify_password},
-    constants::*,
-    errors::AppError,
-    models::dto::{
-        GetMeResponse, ResultResponse, UpdateEmailRequest, UpdatePasswordRequest,
-        UpdateUsernameRequest, UserProfile,
-    },
-    repository::UserRepository,
-};
+use crate::auth::{AuthenticatedUser, hash_password, verify_password};
+use crate::constants::*;
+use crate::errors::AppError;
+use crate::models::dto::*;
+use crate::repository::UserRepository;
 use actix_web::{HttpResponse, get, put, web};
 use mongodb::bson::oid::ObjectId;
 
