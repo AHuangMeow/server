@@ -31,14 +31,12 @@ pub struct UpdatePasswordRequest {
 
 #[derive(Debug, Serialize)]
 pub struct AuthResponse {
-    pub code: usize,
     pub msg: String,
     pub token: String,
 }
 
 #[derive(Debug, Serialize)]
 pub struct ResultResponse {
-    pub code: usize,
     pub msg: String,
 }
 
@@ -50,7 +48,6 @@ pub struct UserProfile {
 
 #[derive(Debug, Serialize)]
 pub struct GetMeResponse {
-    pub code: usize,
     pub msg: String,
     pub data: UserProfile,
 }
@@ -85,14 +82,12 @@ pub struct UserInfo {
 
 #[derive(Debug, Serialize)]
 pub struct UserListResponse {
-    pub code: usize,
     pub msg: String,
     pub data: Vec<UserInfo>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct UserInfoResponse {
-    pub code: usize,
     pub msg: String,
     pub data: UserInfo,
 }

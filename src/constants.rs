@@ -15,6 +15,13 @@ pub const PROFILE_FETCHED: &str = "successfully fetched user profile";
 pub const EMAIL_UPDATED: &str = "successfully updated email";
 pub const USERNAME_UPDATED: &str = "successfully updated username";
 pub const PASSWORD_UPDATED: &str = "successfully updated password";
+pub const USER_INFO_FETCHED: &str = "successfully fetched user info";
+pub const USER_INFOS_FETCHED: &str = "successfully fetched user infos";
+pub const USER_CREATED: &str = "successfully created user";
+pub const USER_UPDATED: &str = "successfully updated user";
+pub const USER_DELETED: &str = "successfully deleted user";
+pub const USER_SETED_AS_ADMIN: &str = "successfully seted user as admin";
+pub const ADMIN_SETED_AS_USER: &str = "successfully seted admin as user";
 
 pub const EMAIL_ALREADY_EXISTS: &str = "email already registered";
 pub const INVALID_CREDENTIALS: &str = "invalid username or password";

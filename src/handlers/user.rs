@@ -18,7 +18,6 @@ pub async fn get_me(
         .ok_or(AppError::Unauthorized(USER_NOT_FOUND.into()))?;
 
     Ok(HttpResponse::Ok().json(GetMeResponse {
-        code: 200,
         msg: PROFILE_FETCHED.into(),
         data: UserProfile {
             email: user_doc.email,
@@ -41,7 +40,6 @@ async fn update_email(
     user_repo.update_email(&uid, &payload.new_email).await?;
 
     Ok(HttpResponse::Ok().json(ResultResponse {
-        code: 200,
         msg: EMAIL_UPDATED.into(),
     }))
 }
@@ -58,7 +56,6 @@ async fn update_username(
         .await?;
 
     Ok(HttpResponse::Ok().json(ResultResponse {
-        code: 200,
         msg: USERNAME_UPDATED.into(),
     }))
 }
@@ -86,7 +83,6 @@ async fn update_password(
     user_repo.update_password(&uid, &new_hash).await?;
 
     Ok(HttpResponse::Ok().json(ResultResponse {
-        code: 200,
         msg: PASSWORD_UPDATED.into(),
     }))
 }

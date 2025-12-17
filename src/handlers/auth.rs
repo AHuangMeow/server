@@ -35,7 +35,6 @@ async fn register(
 
     let token = generate_token(&cfg, &user_id.to_hex())?;
     Ok(HttpResponse::Ok().json(AuthResponse {
-        code: 200,
         msg: REGISTER_SUCCESS.into(),
         token,
     }))
@@ -57,7 +56,6 @@ async fn login(
     let id = user.id.to_hex();
     let token = generate_token(&cfg, &id)?;
     Ok(HttpResponse::Ok().json(AuthResponse {
-        code: 200,
         msg: LOGIN_SUCCESS.into(),
         token,
     }))
@@ -66,7 +64,6 @@ async fn login(
 #[post("/logout")]
 async fn logout(_user: AuthenticatedUser) -> Result<HttpResponse, AppError> {
     Ok(HttpResponse::Ok().json(ResultResponse {
-        code: 200,
         msg: LOGOUT_SUCCESS.into(),
     }))
 }

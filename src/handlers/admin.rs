@@ -1,5 +1,7 @@
 use crate::auth::AdminUser;
 use crate::auth::hash_password;
+use crate::constants::*;
+use crate::errors::AppError;
 use crate::models::dto::*;
 use crate::models::user::User;
 use crate::repository::UserRepository;
@@ -11,7 +13,7 @@ use mongodb::bson::oid::ObjectId;
 async fn get_all_users(
     _admin: AdminUser,
     repo: Data<UserRepository>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let users = repo.find_all().await?;
 
     let user_infos: Vec<UserInfo> = users
@@ -25,8 +27,7 @@ async fn get_all_users(
         .collect();
 
     Ok(HttpResponse::Ok().json(UserListResponse {
-        code: 200,
-        msg: "Success".to_string(),
+        msg: USER_INFOS_FETCHED.into(),
         data: user_infos,
     }))
 }
@@ -36,18 +37,17 @@ async fn get_user_by_id(
     _admin: AdminUser,
     repo: Data<UserRepository>,
     id: Path<String>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let object_id = ObjectId::parse_str(id.as_str())
-        .map_err(|_| actix_web::error::ErrorBadRequest("Invalid user ID"))?;
+        .map_err(|_| AppError::BadRequest(INVALID_USER_ID.into()))?;
 
     let user = repo
         .find_by_id(&object_id)
         .await?
-        .ok_or_else(|| actix_web::error::ErrorNotFound("User not found"))?;
+        .ok_or_else(|| AppError::NotFound(USER_NOT_FOUND.into()))?;
 
     Ok(HttpResponse::Ok().json(UserInfoResponse {
-        code: 200,
-        msg: "Success".to_string(),
+        msg: USER_INFO_FETCHED.into(),
         data: UserInfo {
             id: user.id.to_hex(),
             email: user.email,
@@ -62,12 +62,9 @@ async fn create_user(
     _admin: AdminUser,
     repo: Data<UserRepository>,
     req: Json<CreateUserRequest>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     if repo.find_by_email(&req.email).await?.is_some() {
-        return Ok(HttpResponse::BadRequest().json(ResultResponse {
-            code: 400,
-            msg: "Email already exists".to_string(),
-        }));
+        return Err(AppError::Conflict(EMAIL_ALREADY_EXISTS.into()));
     }
 
     let password_hash = hash_password(&req.password)?;
@@ -83,8 +80,7 @@ async fn create_user(
     repo.create(&user).await?;
 
     Ok(HttpResponse::Created().json(ResultResponse {
-        code: 201,
-        msg: "User created successfully".to_string(),
+        msg: USER_CREATED.into(),
     }))
 }
 
@@ -94,22 +90,19 @@ async fn update_user(
     repo: Data<UserRepository>,
     id: Path<String>,
     req: Json<UpdateUserRequest>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let object_id = ObjectId::parse_str(id.as_str())
-        .map_err(|_| actix_web::error::ErrorBadRequest("Invalid user ID"))?;
+        .map_err(|_| AppError::BadRequest(INVALID_USER_ID.into()))?;
 
     let user = repo
         .find_by_id(&object_id)
         .await?
-        .ok_or_else(|| actix_web::error::ErrorNotFound("User not found"))?;
+        .ok_or_else(|| AppError::NotFound(USER_NOT_FOUND.into()))?;
 
     if let Some(ref email) = req.email {
         if email != &user.email {
             if repo.find_by_email(email).await?.is_some() {
-                return Ok(HttpResponse::BadRequest().json(ResultResponse {
-                    code: 400,
-                    msg: "Email already exists".to_string(),
-                }));
+                return Err(AppError::Conflict(EMAIL_ALREADY_EXISTS.into()));
             }
             repo.update_email(&object_id, email).await?;
         }
@@ -125,8 +118,7 @@ async fn update_user(
     }
 
     Ok(HttpResponse::Ok().json(ResultResponse {
-        code: 200,
-        msg: "User updated successfully".to_string(),
+        msg: USER_UPDATED.into(),
     }))
 }
 
@@ -135,19 +127,18 @@ async fn delete_user(
     _admin: AdminUser,
     repo: Data<UserRepository>,
     id: Path<String>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let object_id = ObjectId::parse_str(id.as_str())
-        .map_err(|_| actix_web::error::ErrorBadRequest("Invalid user ID"))?;
+        .map_err(|_| AppError::BadRequest(INVALID_USER_ID.into()))?;
 
     repo.find_by_id(&object_id)
         .await?
-        .ok_or_else(|| actix_web::error::ErrorNotFound("User not found"))?;
+        .ok_or_else(|| AppError::NotFound(USER_NOT_FOUND.into()))?;
 
     repo.delete_by_id(&object_id).await?;
 
     Ok(HttpResponse::Ok().json(ResultResponse {
-        code: 200,
-        msg: "User deleted successfully".to_string(),
+        msg: USER_DELETED.into(),
     }))
 }
 
@@ -157,26 +148,23 @@ async fn set_admin(
     repo: Data<UserRepository>,
     id: Path<String>,
     req: Json<SetAdminRequest>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> Result<HttpResponse, AppError> {
     let object_id = ObjectId::parse_str(id.as_str())
-        .map_err(|_| actix_web::error::ErrorBadRequest("Invalid user ID"))?;
+        .map_err(|_| AppError::BadRequest(INVALID_USER_ID.into()))?;
 
     repo.find_by_id(&object_id)
         .await?
-        .ok_or_else(|| actix_web::error::ErrorNotFound("User not found"))?;
+        .ok_or_else(|| AppError::NotFound(USER_NOT_FOUND.into()))?;
 
     repo.set_admin(&object_id, req.is_admin).await?;
 
     let msg = if req.is_admin {
-        "User set as admin successfully"
+        USER_SETED_AS_ADMIN
     } else {
-        "Admin privileges revoked successfully"
+        ADMIN_SETED_AS_USER
     };
 
-    Ok(HttpResponse::Ok().json(ResultResponse {
-        code: 200,
-        msg: msg.to_string(),
-    }))
+    Ok(HttpResponse::Ok().json(ResultResponse { msg: msg.into() }))
 }
 
 pub fn admin_scope() -> Scope {
