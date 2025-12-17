@@ -11,9 +11,7 @@ use std::future::Future;
 use std::pin::Pin;
 
 #[derive(Clone)]
-pub struct AdminUser {
-    pub user_id: String,
-}
+pub struct AdminUser {}
 
 impl FromRequest for AdminUser {
     type Error = ActixError;
@@ -68,7 +66,7 @@ impl FromRequest for AdminUser {
                 return Err(AppError::Forbidden(PERMISSION_DENIED.into()).into());
             }
 
-            Ok(AdminUser { user_id })
+            Ok(AdminUser {})
         })
     }
 }

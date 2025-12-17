@@ -2,17 +2,19 @@ use crate::auth::{AuthenticatedUser, generate_token, hash_password, verify_passw
 use crate::config::AppConfig;
 use crate::constants::*;
 use crate::errors::AppError;
-use crate::models::dto::{AuthResponse, LoginRequest, RegisterRequest, ResultResponse};
+use crate::models::request::{LoginRequest, RegisterRequest};
+use crate::models::response::{Response, Token};
 use crate::models::user::User;
 use crate::repository::UserRepository;
-use actix_web::{HttpResponse, post, web};
+use actix_web::web::{Data, Json, scope};
+use actix_web::{HttpResponse, post};
 use mongodb::bson::oid::ObjectId;
 
 #[post("/register")]
 async fn register(
-    user_repo: web::Data<UserRepository>,
-    cfg: web::Data<AppConfig>,
-    payload: web::Json<RegisterRequest>,
+    user_repo: Data<UserRepository>,
+    cfg: Data<AppConfig>,
+    payload: Json<RegisterRequest>,
 ) -> Result<HttpResponse, AppError> {
     if user_repo.find_by_email(&payload.email).await?.is_some() {
         return Err(AppError::Conflict(EMAIL_ALREADY_EXISTS.into()));
@@ -34,17 +36,17 @@ async fn register(
     user_repo.create(&new_user).await?;
 
     let token = generate_token(&cfg, &user_id.to_hex())?;
-    Ok(HttpResponse::Ok().json(AuthResponse {
+    Ok(HttpResponse::Ok().json(Response {
         msg: REGISTER_SUCCESS.into(),
-        token,
+        data: Some(Token { token }),
     }))
 }
 
 #[post("/login")]
 async fn login(
-    user_repo: web::Data<UserRepository>,
-    cfg: web::Data<AppConfig>,
-    payload: web::Json<LoginRequest>,
+    user_repo: Data<UserRepository>,
+    cfg: Data<AppConfig>,
+    payload: Json<LoginRequest>,
 ) -> Result<HttpResponse, AppError> {
     let user = user_repo
         .find_by_email(&payload.email)
@@ -55,21 +57,22 @@ async fn login(
 
     let id = user.id.to_hex();
     let token = generate_token(&cfg, &id)?;
-    Ok(HttpResponse::Ok().json(AuthResponse {
+    Ok(HttpResponse::Ok().json(Response {
         msg: LOGIN_SUCCESS.into(),
-        token,
+        data: Some(Token { token }),
     }))
 }
 
 #[post("/logout")]
 async fn logout(_user: AuthenticatedUser) -> Result<HttpResponse, AppError> {
-    Ok(HttpResponse::Ok().json(ResultResponse {
+    Ok(HttpResponse::Ok().json(Response::<()> {
         msg: LOGOUT_SUCCESS.into(),
+        data: None,
     }))
 }
 
 pub fn auth_scope() -> actix_web::Scope {
-    web::scope("/auth")
+    scope("/auth")
         .service(register)
         .service(login)
         .service(logout)

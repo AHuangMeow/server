@@ -1,14 +1,16 @@
 use crate::auth::{AuthenticatedUser, hash_password, verify_password};
 use crate::constants::*;
 use crate::errors::AppError;
-use crate::models::dto::*;
+use crate::models::request::{UpdateEmailRequest, UpdatePasswordRequest, UpdateUsernameRequest};
+use crate::models::response::{AboutMe, Response};
 use crate::repository::UserRepository;
-use actix_web::{HttpResponse, get, put, web};
+use actix_web::web::{Data, Json, scope};
+use actix_web::{HttpResponse, get, put};
 use mongodb::bson::oid::ObjectId;
 
 #[get("/me")]
 pub async fn get_me(
-    user_repo: web::Data<UserRepository>,
+    user_repo: Data<UserRepository>,
     user: AuthenticatedUser,
 ) -> Result<HttpResponse, AppError> {
     let uid = ObjectId::parse_str(&user.user_id)?;
@@ -17,54 +19,54 @@ pub async fn get_me(
         .await?
         .ok_or(AppError::Unauthorized(USER_NOT_FOUND.into()))?;
 
-    Ok(HttpResponse::Ok().json(GetMeResponse {
+    Ok(HttpResponse::Ok().json(Response {
         msg: PROFILE_FETCHED.into(),
-        data: UserProfile {
+        data: Some(AboutMe {
             email: user_doc.email,
             username: user_doc.username,
-        },
+        }),
     }))
 }
 
 #[put("/email")]
 async fn update_email(
-    user_repo: web::Data<UserRepository>,
+    user_repo: Data<UserRepository>,
     user: AuthenticatedUser,
-    payload: web::Json<UpdateEmailRequest>,
+    payload: Json<UpdateEmailRequest>,
 ) -> Result<HttpResponse, AppError> {
-    if user_repo.find_by_email(&payload.new_email).await?.is_some() {
+    if user_repo.find_by_email(&payload.email).await?.is_some() {
         return Err(AppError::Conflict(EMAIL_ALREADY_EXISTS.into()));
     }
 
     let uid = ObjectId::parse_str(&user.user_id)?;
-    user_repo.update_email(&uid, &payload.new_email).await?;
+    user_repo.update_email(&uid, &payload.email).await?;
 
-    Ok(HttpResponse::Ok().json(ResultResponse {
+    Ok(HttpResponse::Ok().json(Response::<()> {
         msg: EMAIL_UPDATED.into(),
+        data: None,
     }))
 }
 
 #[put("/username")]
 async fn update_username(
-    user_repo: web::Data<UserRepository>,
+    user_repo: Data<UserRepository>,
     user: AuthenticatedUser,
-    payload: web::Json<UpdateUsernameRequest>,
+    payload: Json<UpdateUsernameRequest>,
 ) -> Result<HttpResponse, AppError> {
     let uid = ObjectId::parse_str(&user.user_id)?;
-    user_repo
-        .update_username(&uid, &payload.new_username)
-        .await?;
+    user_repo.update_username(&uid, &payload.username).await?;
 
-    Ok(HttpResponse::Ok().json(ResultResponse {
+    Ok(HttpResponse::Ok().json(Response::<()> {
         msg: USERNAME_UPDATED.into(),
+        data: None,
     }))
 }
 
 #[put("/password")]
 async fn update_password(
-    user_repo: web::Data<UserRepository>,
+    user_repo: Data<UserRepository>,
     user: AuthenticatedUser,
-    payload: web::Json<UpdatePasswordRequest>,
+    payload: Json<UpdatePasswordRequest>,
 ) -> Result<HttpResponse, AppError> {
     let uid = ObjectId::parse_str(&user.user_id)?;
     let current = user_repo
@@ -72,23 +74,24 @@ async fn update_password(
         .await?
         .ok_or(AppError::Unauthorized(USER_NOT_FOUND.into()))?;
 
-    verify_password(&current.password_hash, &payload.old_password)
+    verify_password(&current.password_hash, &payload.password)
         .map_err(|_| AppError::Unauthorized(INVALID_OLD_PASSWORD.into()))?;
 
-    if payload.new_password.len() < MIN_PASSWORD_LENGTH {
+    if payload.password.len() < MIN_PASSWORD_LENGTH {
         return Err(AppError::UnprocessableEntity(PASSWORD_TOO_SHORT.into()));
     }
 
-    let new_hash = hash_password(&payload.new_password)?;
+    let new_hash = hash_password(&payload.password)?;
     user_repo.update_password(&uid, &new_hash).await?;
 
-    Ok(HttpResponse::Ok().json(ResultResponse {
+    Ok(HttpResponse::Ok().json(Response::<()> {
         msg: PASSWORD_UPDATED.into(),
+        data: None,
     }))
 }
 
 pub fn user_scope() -> actix_web::Scope {
-    web::scope("/user")
+    scope("/user")
         .service(get_me)
         .service(update_email)
         .service(update_username)

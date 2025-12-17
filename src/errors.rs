@@ -1,5 +1,5 @@
 use crate::constants::INVALID_USER_ID;
-use crate::models::dto::ResultResponse;
+use crate::models::response::Response;
 
 use actix_web::{HttpResponse, ResponseError};
 use thiserror::Error;
@@ -37,26 +37,35 @@ impl From<mongodb::bson::oid::Error> for AppError {
 impl ResponseError for AppError {
     fn error_response(&self) -> HttpResponse {
         match self {
-            AppError::BadRequest(msg) => {
-                HttpResponse::BadRequest().json(ResultResponse { msg: msg.into() })
-            }
-            AppError::Unauthorized(msg) => {
-                HttpResponse::Unauthorized().json(ResultResponse { msg: msg.into() })
-            }
-            AppError::Forbidden(msg) => {
-                HttpResponse::Forbidden().json(ResultResponse { msg: msg.into() })
-            }
-            AppError::NotFound(msg) => {
-                HttpResponse::NotFound().json(ResultResponse { msg: msg.into() })
-            }
-            AppError::Conflict(msg) => {
-                HttpResponse::Conflict().json(ResultResponse { msg: msg.into() })
-            }
+            AppError::BadRequest(msg) => HttpResponse::BadRequest().json(Response::<()> {
+                msg: msg.into(),
+                data: None,
+            }),
+            AppError::Unauthorized(msg) => HttpResponse::Unauthorized().json(Response::<()> {
+                msg: msg.into(),
+                data: None,
+            }),
+            AppError::Forbidden(msg) => HttpResponse::Forbidden().json(Response::<()> {
+                msg: msg.into(),
+                data: None,
+            }),
+            AppError::NotFound(msg) => HttpResponse::NotFound().json(Response::<()> {
+                msg: msg.into(),
+                data: None,
+            }),
+            AppError::Conflict(msg) => HttpResponse::Conflict().json(Response::<()> {
+                msg: msg.into(),
+                data: None,
+            }),
             AppError::UnprocessableEntity(msg) => {
-                HttpResponse::UnprocessableEntity().json(ResultResponse { msg: msg.into() })
+                HttpResponse::UnprocessableEntity().json(Response::<()> {
+                    msg: msg.into(),
+                    data: None,
+                })
             }
-            AppError::Internal => HttpResponse::InternalServerError().json(ResultResponse {
+            AppError::Internal => HttpResponse::InternalServerError().json(Response::<()> {
                 msg: "internal server error".into(),
+                data: None,
             }),
         }
     }
