@@ -5,13 +5,13 @@ edition = "2024"
 
 [dependencies]
 actix-web = "4.12.1"
-argon2 = "0.5.3"
 bcrypt = "0.17.1"
 dotenvy = "0.15.7"
 futures = "0.3.31"
 jsonwebtoken = { version = "10.2.0", default-features = false, features = ["rust_crypto"] }
 mongodb = "3.4.1"
 rand_core = "0.6"
+redis = { version = "0.27.6", features = ["tokio-comp"] }
 serde = "1.0.228"
 thiserror = "2.0.17"
 time = "0.3.44"

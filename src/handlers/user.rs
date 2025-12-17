@@ -1,9 +1,9 @@
 use crate::auth::{AuthenticatedUser, hash_password, verify_password};
 use crate::constants::*;
+use crate::database::mongodb::UserRepository;
 use crate::errors::AppError;
 use crate::models::request::{UpdateEmailRequest, UpdatePasswordRequest, UpdateUsernameRequest};
 use crate::models::response::{AboutMe, Response};
-use crate::repository::UserRepository;
 use actix_web::web::{Data, Json, scope};
 use actix_web::{HttpResponse, get, put};
 use mongodb::bson::oid::ObjectId;

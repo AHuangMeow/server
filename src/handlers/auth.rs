@@ -1,14 +1,16 @@
 use crate::auth::{AuthenticatedUser, generate_token, hash_password, verify_password};
 use crate::config::AppConfig;
 use crate::constants::*;
+use crate::database::mongodb::UserRepository;
+use crate::database::redis::TokenBlacklist;
 use crate::errors::AppError;
 use crate::models::request::{LoginRequest, RegisterRequest};
 use crate::models::response::{Response, Token};
 use crate::models::user::User;
-use crate::repository::UserRepository;
 use actix_web::web::{Data, Json, scope};
 use actix_web::{HttpResponse, post};
 use mongodb::bson::oid::ObjectId;
+use time::OffsetDateTime;
 
 #[post("/register")]
 async fn register(
@@ -64,7 +66,18 @@ async fn login(
 }
 
 #[post("/logout")]
-async fn logout(_user: AuthenticatedUser) -> Result<HttpResponse, AppError> {
+async fn logout(
+    user: AuthenticatedUser,
+    blacklist: Data<TokenBlacklist>,
+) -> Result<HttpResponse, AppError> {
+    let token = &user.token;
+    let now = OffsetDateTime::now_utc().unix_timestamp();
+    let exp_seconds = (user.exp as i64) - now;
+
+    if exp_seconds > 0 {
+        blacklist.add_token(token, exp_seconds).await?;
+    }
+
     Ok(HttpResponse::Ok().json(Response::<()> {
         msg: LOGOUT_SUCCESS.into(),
         data: None,

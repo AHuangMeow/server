@@ -1,11 +1,11 @@
 use crate::auth::AdminUser;
 use crate::auth::hash_password;
 use crate::constants::*;
+use crate::database::mongodb::UserRepository;
 use crate::errors::AppError;
 use crate::models::request::{CreateUserRequest, SetRoleRequest, UpdateUserRequest};
 use crate::models::response::{Response, UserInfo};
 use crate::models::user::User;
-use crate::repository::UserRepository;
 use actix_web::web::{Data, Json, Path};
 use actix_web::{HttpResponse, Scope, delete, get, post, put};
 use mongodb::bson::oid::ObjectId;

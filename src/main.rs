@@ -1,16 +1,15 @@
 mod auth;
 mod config;
 mod constants;
-mod db;
+mod database;
 mod errors;
 mod handlers;
 mod models;
-mod repository;
 
 use crate::config::AppConfig;
-use crate::db::init_db;
+use crate::database::mongodb::{UserRepository, init_db};
+use crate::database::redis::{TokenBlacklist, init_redis};
 use crate::handlers::{admin_scope, auth_scope, user_scope};
-use crate::repository::UserRepository;
 use actix_web::web::Data;
 use actix_web::{App, HttpServer};
 
@@ -20,7 +19,11 @@ async fn main() -> Result<(), std::io::Error> {
     let db = init_db(&cfg.mongo_uri, &cfg.mongo_db)
         .await
         .expect("Failed to connect to database");
+    let redis_conn = init_redis(&cfg.redis_uri)
+        .await
+        .expect("Failed to connect to Redis");
     let user_repo = UserRepository::new(&db);
+    let blacklist = TokenBlacklist::new(redis_conn);
 
     let host = cfg.host.clone();
     let port = cfg.port;
@@ -31,6 +34,7 @@ async fn main() -> Result<(), std::io::Error> {
         App::new()
             .app_data(Data::new(cfg.clone()))
             .app_data(Data::new(user_repo.clone()))
+            .app_data(Data::new(blacklist.clone()))
             .service(auth_scope())
             .service(user_scope())
             .service(admin_scope())

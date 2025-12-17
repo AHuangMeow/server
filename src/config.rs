@@ -6,6 +6,7 @@ use std::env;
 pub struct AppConfig {
     pub mongo_uri: String,
     pub mongo_db: String,
+    pub redis_uri: String,
     pub jwt_secret: String,
     pub jwt_exp_hours: i64,
     pub host: String,
@@ -29,6 +30,8 @@ impl AppConfig {
 
         let mongo_db = env::var(MONGO_DB).map_err(|_| format!("{} is required", MONGO_DB))?;
 
+        let redis_uri = env::var(REDIS_URI).map_err(|_| format!("{} is required", REDIS_URI))?;
+
         let jwt_exp_hours = env::var(JWT_EXP_HOURS)
             .unwrap_or_else(|_| DEFAULT_JWT_EXP_HOURS.to_string())
             .parse()
@@ -48,6 +51,7 @@ impl AppConfig {
         Ok(Self {
             mongo_uri,
             mongo_db,
+            redis_uri,
             jwt_secret,
             jwt_exp_hours,
             host,

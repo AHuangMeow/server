@@ -1,50 +1,51 @@
 use crate::auth::token::decode_token;
 use crate::config::AppConfig;
-use crate::constants::AUTH_REQUIRED;
+use crate::constants::{AUTH_REQUIRED, TOKEN_BLACKLISTED};
+use crate::database::redis::TokenBlacklist;
 use crate::errors::AppError;
 use actix_web::dev::Payload;
 use actix_web::web::Data;
 use actix_web::{Error as ActixError, FromRequest, HttpRequest};
-use std::future::{Ready, ready};
+use std::future::Future;
+use std::pin::Pin;
 
 #[derive(Clone)]
 pub struct AuthenticatedUser {
     pub user_id: String,
+    pub token: String,
+    pub exp: usize,
 }
 
 impl FromRequest for AuthenticatedUser {
     type Error = ActixError;
-    type Future = Ready<Result<Self, ActixError>>;
+    type Future = Pin<Box<dyn Future<Output = Result<Self, ActixError>>>>;
 
     fn from_request(req: &HttpRequest, _: &mut Payload) -> Self::Future {
-        let unauthorized = || {
-            ready::<Result<AuthenticatedUser, ActixError>>(Err(AppError::Unauthorized(
-                AUTH_REQUIRED.into(),
-            )
-            .into()))
-        };
-
-        let cfg = match req.app_data::<Data<AppConfig>>().cloned() {
-            Some(cfg) => cfg,
-            None => return ready(Err(AppError::Internal.into())),
-        };
-
-        let token = match req
+        let cfg = req.app_data::<Data<AppConfig>>().cloned();
+        let blacklist = req.app_data::<Data<TokenBlacklist>>().cloned();
+        let token = req
             .headers()
             .get("Authorization")
             .and_then(|h| h.to_str().ok())
-        {
-            Some(h) if h.starts_with("Bearer") => h.trim_start_matches("Bearer").trim(),
-            _ => return unauthorized(),
-        };
+            .filter(|h| h.starts_with("Bearer "))
+            .map(|h| h.trim_start_matches("Bearer ").trim().to_string());
 
-        let claims = match decode_token(&cfg, token) {
-            Ok(c) => c,
-            Err(_) => return unauthorized(),
-        };
+        Box::pin(async move {
+            let cfg = cfg.ok_or(AppError::Internal)?;
+            let token = token.ok_or(AppError::Unauthorized(AUTH_REQUIRED.into()))?;
+            let claims = decode_token(&cfg, &token)?;
 
-        ready(Ok(AuthenticatedUser {
-            user_id: claims.sub,
-        }))
+            if let Some(bl) = blacklist {
+                if bl.is_blacklisted(&token).await? {
+                    return Err(AppError::Unauthorized(TOKEN_BLACKLISTED.into()).into());
+                }
+            }
+
+            Ok(AuthenticatedUser {
+                user_id: claims.sub,
+                token,
+                exp: claims.exp,
+            })
+        })
     }
 }

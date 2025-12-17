@@ -9,14 +9,17 @@ use time::{Duration, OffsetDateTime};
 pub struct Claims {
     pub sub: String, // user id
     pub exp: usize,
+    pub iat: usize,  // issued at
 }
 
 pub fn generate_token(cfg: &AppConfig, user_id: &str) -> Result<String, AppError> {
+    let now = OffsetDateTime::now_utc().unix_timestamp() as usize;
     let exp =
         (OffsetDateTime::now_utc() + Duration::hours(cfg.jwt_exp_hours)).unix_timestamp() as usize;
     let claims = Claims {
         sub: user_id.into(),
         exp,
+        iat: now,
     };
     encode(
         &Header::default(),
@@ -33,5 +36,8 @@ pub fn decode_token(cfg: &AppConfig, token: &str) -> Result<Claims, AppError> {
         &Validation::default(),
     )
     .map(|data| data.claims)
-    .map_err(|_| AppError::Unauthorized(AUTH_REQUIRED.into()))
+    .map_err(|e| {
+        eprintln!("Token decode error: {:?}", e);
+        AppError::Unauthorized(AUTH_REQUIRED.into())
+    })
 }

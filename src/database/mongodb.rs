@@ -1,9 +1,17 @@
 use crate::constants::COLLECTION_USERS;
 use crate::errors::AppError;
 use crate::models::user::User;
+use mongodb::bson::doc;
 use mongodb::bson::oid::ObjectId;
-use mongodb::bson::{DateTime, doc};
-use mongodb::{Collection, Database};
+use mongodb::options::ClientOptions;
+use mongodb::{Client, Collection, Database};
+
+pub async fn init_db(uri: &str, db_name: &str) -> mongodb::error::Result<Database> {
+    let mut client_options = ClientOptions::parse(uri).await?;
+    client_options.app_name = Some("ActixAuth".into());
+    let client = Client::with_options(client_options)?;
+    Ok(client.database(db_name))
+}
 
 #[derive(Clone)]
 pub struct UserRepository {
@@ -45,7 +53,7 @@ impl UserRepository {
         self.collection
             .update_one(
                 doc! { "_id": id },
-                doc! { "$set": { "is_admin": is_admin, "updated_at": DateTime::now() } },
+                doc! { "$set": { "is_admin": is_admin } },
             )
             .await?;
         Ok(())
@@ -58,10 +66,7 @@ impl UserRepository {
 
     pub async fn update_email(&self, id: &ObjectId, new_email: &str) -> Result<(), AppError> {
         self.collection
-            .update_one(
-                doc! { "_id": id },
-                doc! { "$set": { "email": new_email, "updated_at": DateTime::now() } },
-            )
+            .update_one(doc! { "_id": id }, doc! { "$set": { "email": new_email } })
             .await?;
         Ok(())
     }
@@ -70,7 +75,7 @@ impl UserRepository {
         self.collection
             .update_one(
                 doc! { "_id": id },
-                doc! { "$set": { "username": new_username, "updated_at": DateTime::now() } },
+                doc! { "$set": { "username": new_username } },
             )
             .await?;
         Ok(())
@@ -84,7 +89,7 @@ impl UserRepository {
         self.collection
             .update_one(
                 doc! { "_id": id },
-                doc! { "$set": { "password_hash": password_hash, "updated_at": DateTime::now() } },
+                doc! { "$set": { "password_hash": password_hash } },
             )
             .await?;
         Ok(())

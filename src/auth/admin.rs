@@ -1,8 +1,8 @@
 use crate::auth::token::decode_token;
 use crate::config::AppConfig;
 use crate::constants::{AUTH_REQUIRED, PERMISSION_DENIED};
+use crate::database::mongodb::UserRepository;
 use crate::errors::AppError;
-use crate::repository::UserRepository;
 use actix_web::dev::Payload;
 use actix_web::web::Data;
 use actix_web::{Error as ActixError, FromRequest, HttpRequest};
