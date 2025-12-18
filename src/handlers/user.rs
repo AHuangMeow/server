@@ -74,14 +74,14 @@ async fn update_password(
         .await?
         .ok_or(AppError::Unauthorized(USER_NOT_FOUND.into()))?;
 
-    verify_password(&current.password_hash, &payload.password)
+    verify_password(&current.password_hash, &payload.old_password)
         .map_err(|_| AppError::Unauthorized(INVALID_OLD_PASSWORD.into()))?;
 
-    if payload.password.len() < MIN_PASSWORD_LENGTH {
+    if payload.new_password.len() < MIN_PASSWORD_LENGTH {
         return Err(AppError::UnprocessableEntity(PASSWORD_TOO_SHORT.into()));
     }
 
-    let new_hash = hash_password(&payload.password)?;
+    let new_hash = hash_password(&payload.new_password)?;
     user_repo.update_password(&uid, &new_hash).await?;
 
     Ok(HttpResponse::Ok().json(Response::<()> {

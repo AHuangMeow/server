@@ -25,7 +25,8 @@ pub struct UpdateUsernameRequest {
 
 #[derive(Debug, Deserialize)]
 pub struct UpdatePasswordRequest {
-    pub password: String,
+    pub old_password: String,
+    pub new_password: String,
 }
 
 #[derive(Debug, Deserialize)]

@@ -11,6 +11,8 @@ pub struct AppConfig {
     pub jwt_exp_hours: i64,
     pub host: String,
     pub port: u16,
+    pub ssl_cert_path: Option<String>,
+    pub ssl_key_path: Option<String>,
 }
 
 impl AppConfig {
@@ -48,6 +50,9 @@ impl AppConfig {
             .parse()
             .map_err(|_| format!("{} must be a valid port number", APP_PORT))?;
 
+        let ssl_cert_path = env::var(SSL_CERT_PATH).ok();
+        let ssl_key_path = env::var(SSL_KEY_PATH).ok();
+
         Ok(Self {
             mongo_uri,
             mongo_db,
@@ -56,6 +61,8 @@ impl AppConfig {
             jwt_exp_hours,
             host,
             port,
+            ssl_cert_path,
+            ssl_key_path,
         })
     }
 }

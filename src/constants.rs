@@ -40,3 +40,5 @@ pub const JWT_EXP_HOURS: &str = "JWT_EXP_HOURS";
 pub const APP_HOST: &str = "APP_HOST";
 pub const APP_PORT: &str = "APP_PORT";
 pub const REDIS_URI: &str = "REDIS_URI";
+pub const SSL_CERT_PATH: &str = "SSL_CERT_PATH";
+pub const SSL_KEY_PATH: &str = "SSL_KEY_PATH";
