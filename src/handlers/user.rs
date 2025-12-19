@@ -1,11 +1,12 @@
-use crate::auth::{AuthenticatedUser, hash_password, verify_password};
+use crate::auth::AuthenticatedUser;
 use crate::constants::*;
 use crate::database::mongodb::UserRepository;
 use crate::errors::AppError;
 use crate::models::request::{UpdateEmailRequest, UpdatePasswordRequest, UpdateUsernameRequest};
 use crate::models::response::{AboutMe, Response};
-use actix_web::web::{Data, Json, scope};
-use actix_web::{HttpResponse, get, put};
+use crate::utils::password::{hash_password, verify_password};
+use actix_web::web::{scope, Data, Json};
+use actix_web::{get, put, HttpResponse};
 use mongodb::bson::oid::ObjectId;
 use validator::Validate;
 
@@ -35,7 +36,8 @@ async fn update_email(
     user: AuthenticatedUser,
     payload: Json<UpdateEmailRequest>,
 ) -> Result<HttpResponse, AppError> {
-    payload.validate()
+    payload
+        .validate()
         .map_err(|e| AppError::BadRequest(e.to_string()))?;
 
     if user_repo.find_by_email(&payload.email).await?.is_some() {
@@ -57,7 +59,8 @@ async fn update_username(
     user: AuthenticatedUser,
     payload: Json<UpdateUsernameRequest>,
 ) -> Result<HttpResponse, AppError> {
-    payload.validate()
+    payload
+        .validate()
         .map_err(|e| AppError::BadRequest(e.to_string()))?;
 
     let uid = ObjectId::parse_str(&user.user_id)?;
@@ -75,7 +78,8 @@ async fn update_password(
     user: AuthenticatedUser,
     payload: Json<UpdatePasswordRequest>,
 ) -> Result<HttpResponse, AppError> {
-    payload.validate()
+    payload
+        .validate()
         .map_err(|e| AppError::BadRequest(e.to_string()))?;
 
     let uid = ObjectId::parse_str(&user.user_id)?;

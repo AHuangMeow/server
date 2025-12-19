@@ -5,10 +5,11 @@ mod database;
 mod errors;
 mod handlers;
 mod models;
+mod utils;
 
 use crate::config::app_config::AppConfig;
 use crate::config::rustls_config::load_rustls_config;
-use crate::database::mongodb::{init_db, UserRepository};
+use crate::database::mongodb::{init_mongodb, UserRepository};
 use crate::database::redis::{init_redis, TokenBlacklist};
 use crate::handlers::{admin_scope, auth_scope, health_check, user_scope};
 use actix_web::web::Data;
@@ -32,7 +33,7 @@ async fn main() -> Result<(), std::io::Error> {
     let cfg = AppConfig::from_env().expect("Failed to load configuration");
 
     tracing::info!("Connecting to MongoDB at {}...", cfg.mongo_uri);
-    let db = init_db(&cfg.mongo_uri, &cfg.mongo_db)
+    let db = init_mongodb(&cfg.mongo_uri, &cfg.mongo_db)
         .await
         .expect("Failed to connect to database");
 

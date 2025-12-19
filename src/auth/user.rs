@@ -1,8 +1,8 @@
-use crate::auth::token::decode_token;
 use crate::config::app_config::AppConfig;
 use crate::constants::{AUTH_REQUIRED, TOKEN_BLACKLISTED};
 use crate::database::redis::TokenBlacklist;
 use crate::errors::AppError;
+use crate::utils::token::decode_token;
 use actix_web::dev::Payload;
 use actix_web::web::Data;
 use actix_web::{Error as ActixError, FromRequest, HttpRequest};

@@ -6,7 +6,7 @@ use mongodb::bson::oid::ObjectId;
 use mongodb::options::ClientOptions;
 use mongodb::{Client, Collection, Database};
 
-pub async fn init_db(uri: &str, db_name: &str) -> mongodb::error::Result<Database> {
+pub async fn init_mongodb(uri: &str, db_name: &str) -> mongodb::error::Result<Database> {
     let mut client_options = ClientOptions::parse(uri).await?;
     client_options.app_name = Some("ActixAuth".into());
     let client = Client::with_options(client_options)?;

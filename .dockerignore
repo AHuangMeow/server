@@ -1,9 +1,0 @@
-target/
-.git/
-.gitignore
-.env
-*.md
-Dockerfile
-docker-compose.yml
-.dockerignore
-certs/

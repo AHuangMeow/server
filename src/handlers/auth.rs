@@ -1,4 +1,4 @@
-use crate::auth::{generate_token, hash_password, verify_password, AuthenticatedUser};
+use crate::auth::AuthenticatedUser;
 use crate::config::app_config::AppConfig;
 use crate::constants::*;
 use crate::database::mongodb::UserRepository;
@@ -7,6 +7,8 @@ use crate::errors::AppError;
 use crate::models::request::{LoginRequest, RegisterRequest};
 use crate::models::response::{Response, Token};
 use crate::models::user::User;
+use crate::utils::password::{hash_password, verify_password};
+use crate::utils::token::generate_token;
 use actix_web::web::{scope, Data, Json};
 use actix_web::{post, HttpResponse};
 use mongodb::bson::oid::ObjectId;

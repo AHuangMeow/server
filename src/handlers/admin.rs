@@ -1,13 +1,13 @@
 use crate::auth::AdminUser;
-use crate::auth::hash_password;
 use crate::constants::*;
 use crate::database::mongodb::UserRepository;
 use crate::errors::AppError;
 use crate::models::request::{CreateUserRequest, SetRoleRequest, UpdateUserRequest};
 use crate::models::response::{Response, UserInfo};
 use crate::models::user::User;
+use crate::utils::password::hash_password;
 use actix_web::web::{Data, Json, Path};
-use actix_web::{HttpResponse, Scope, delete, get, post, put};
+use actix_web::{delete, get, post, put, HttpResponse, Scope};
 use mongodb::bson::oid::ObjectId;
 use validator::Validate;
 
@@ -40,7 +40,8 @@ async fn create_user(
     user_repo: Data<UserRepository>,
     payload: Json<CreateUserRequest>,
 ) -> Result<HttpResponse, AppError> {
-    payload.validate()
+    payload
+        .validate()
         .map_err(|e| AppError::BadRequest(e.to_string()))?;
 
     if user_repo.find_by_email(&payload.email).await?.is_some() {
@@ -97,7 +98,8 @@ async fn update_user(
     id: Path<String>,
     payload: Json<UpdateUserRequest>,
 ) -> Result<HttpResponse, AppError> {
-    payload.validate()
+    payload
+        .validate()
         .map_err(|e| AppError::BadRequest(e.to_string()))?;
 
     let object_id = ObjectId::parse_str(id.as_str())
