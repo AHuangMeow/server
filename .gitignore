@@ -1,3 +1,11 @@
 /target
-/certs
+/certs/*.pem
 /.env
+*.tar
+*.tar.gz
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
