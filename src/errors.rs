@@ -1,4 +1,4 @@
-use crate::constants::INVALID_USER_ID;
+use crate::constants::{INTERNAL_SERVER_ERROR, INVALID_USER_ID};
 use crate::models::response::Response;
 
 use actix_web::{HttpResponse, ResponseError};
@@ -16,16 +16,12 @@ pub enum AppError {
     NotFound(String),
     #[error("Conflict: {0}")]
     Conflict(String),
-    #[error("UnprocessableEntity: {0}")]
-    UnprocessableEntity(String),
-    #[error("Internal")]
+    #[error("Database error: {0}")]
+    Database(#[from] mongodb::error::Error),
+    #[error("Redis error: {0}")]
+    Redis(#[from] redis::RedisError),
+    #[error("Internal server error")]
     Internal,
-}
-
-impl From<mongodb::error::Error> for AppError {
-    fn from(_: mongodb::error::Error) -> Self {
-        AppError::Internal
-    }
 }
 
 impl From<mongodb::bson::oid::Error> for AppError {
@@ -57,16 +53,27 @@ impl ResponseError for AppError {
                 msg: msg.into(),
                 data: None,
             }),
-            AppError::UnprocessableEntity(msg) => {
-                HttpResponse::UnprocessableEntity().json(Response::<()> {
-                    msg: msg.into(),
+            AppError::Database(e) => {
+                tracing::error!("Database error: {:?}", e);
+                HttpResponse::InternalServerError().json(Response::<()> {
+                    msg: INTERNAL_SERVER_ERROR.into(),
                     data: None,
                 })
             }
-            AppError::Internal => HttpResponse::InternalServerError().json(Response::<()> {
-                msg: "internal server error".into(),
-                data: None,
-            }),
+            AppError::Redis(e) => {
+                tracing::error!("Redis error: {:?}", e);
+                HttpResponse::InternalServerError().json(Response::<()> {
+                    msg: INTERNAL_SERVER_ERROR.into(),
+                    data: None,
+                })
+            }
+            AppError::Internal => {
+                tracing::error!("Internal server error");
+                HttpResponse::InternalServerError().json(Response::<()> {
+                    msg: INTERNAL_SERVER_ERROR.into(),
+                    data: None,
+                })
+            }
         }
     }
 }

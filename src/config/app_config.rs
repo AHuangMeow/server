@@ -1,6 +1,7 @@
 use crate::constants::*;
 use dotenvy::dotenv;
 use std::env;
+use std::path::Path;
 
 #[derive(Clone)]
 pub struct AppConfig {
@@ -52,6 +53,19 @@ impl AppConfig {
 
         let ssl_cert_path = env::var(SSL_CERT_PATH).ok();
         let ssl_key_path = env::var(SSL_KEY_PATH).ok();
+
+        // Validate SSL certificate files exist
+        if let Some(ref cert_path) = ssl_cert_path {
+            if !Path::new(cert_path).exists() {
+                return Err(format!("SSL certificate file not found: {}", cert_path));
+            }
+        }
+
+        if let Some(ref key_path) = ssl_key_path {
+            if !Path::new(key_path).exists() {
+                return Err(format!("SSL key file not found: {}", key_path));
+            }
+        }
 
         Ok(Self {
             mongo_uri,

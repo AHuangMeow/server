@@ -1,5 +1,5 @@
 use crate::auth::token::decode_token;
-use crate::config::AppConfig;
+use crate::config::app_config::AppConfig;
 use crate::constants::{AUTH_REQUIRED, TOKEN_BLACKLISTED};
 use crate::database::redis::TokenBlacklist;
 use crate::errors::AppError;

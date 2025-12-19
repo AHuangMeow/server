@@ -1,7 +1,5 @@
 pub const COLLECTION_USERS: &str = "users";
 
-pub const MIN_PASSWORD_LENGTH: usize = 8;
-
 pub const DEFAULT_JWT_EXP_HOURS: i64 = 24;
 pub const MIN_JWT_SECRET_LENGTH: usize = 32;
 
@@ -21,8 +19,8 @@ pub const USER_INFOS_FETCHED: &str = "successfully fetched user infos";
 pub const USER_CREATED: &str = "successfully created user";
 pub const USER_UPDATED: &str = "successfully updated user";
 pub const USER_DELETED: &str = "successfully deleted user";
-pub const USER_SETED_AS_ADMIN: &str = "successfully seted user as admin";
-pub const ADMIN_SETED_AS_USER: &str = "successfully seted admin as user";
+pub const USER_SET_AS_ADMIN: &str = "successfully set user as admin";
+pub const ADMIN_SET_AS_USER: &str = "successfully set admin as user";
 
 pub const EMAIL_ALREADY_EXISTS: &str = "email already registered";
 pub const INVALID_CREDENTIALS: &str = "invalid username or password";
@@ -30,8 +28,8 @@ pub const INVALID_OLD_PASSWORD: &str = "invalid old password";
 pub const USER_NOT_FOUND: &str = "user not found";
 pub const AUTH_REQUIRED: &str = "authentication required";
 pub const INVALID_USER_ID: &str = "invalid user id";
-pub const PASSWORD_TOO_SHORT: &str = "password length must be at least 8";
 pub const PERMISSION_DENIED: &str = "permission denied";
+pub const INTERNAL_SERVER_ERROR: &str = "internal server error";
 
 pub const MONGO_URI: &str = "MONGO_URI";
 pub const MONGO_DB: &str = "MONGO_DB";

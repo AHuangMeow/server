@@ -7,6 +7,7 @@ use crate::models::response::{AboutMe, Response};
 use actix_web::web::{Data, Json, scope};
 use actix_web::{HttpResponse, get, put};
 use mongodb::bson::oid::ObjectId;
+use validator::Validate;
 
 #[get("/me")]
 pub async fn get_me(
@@ -34,6 +35,9 @@ async fn update_email(
     user: AuthenticatedUser,
     payload: Json<UpdateEmailRequest>,
 ) -> Result<HttpResponse, AppError> {
+    payload.validate()
+        .map_err(|e| AppError::BadRequest(e.to_string()))?;
+
     if user_repo.find_by_email(&payload.email).await?.is_some() {
         return Err(AppError::Conflict(EMAIL_ALREADY_EXISTS.into()));
     }
@@ -53,6 +57,9 @@ async fn update_username(
     user: AuthenticatedUser,
     payload: Json<UpdateUsernameRequest>,
 ) -> Result<HttpResponse, AppError> {
+    payload.validate()
+        .map_err(|e| AppError::BadRequest(e.to_string()))?;
+
     let uid = ObjectId::parse_str(&user.user_id)?;
     user_repo.update_username(&uid, &payload.username).await?;
 
@@ -68,6 +75,9 @@ async fn update_password(
     user: AuthenticatedUser,
     payload: Json<UpdatePasswordRequest>,
 ) -> Result<HttpResponse, AppError> {
+    payload.validate()
+        .map_err(|e| AppError::BadRequest(e.to_string()))?;
+
     let uid = ObjectId::parse_str(&user.user_id)?;
     let current = user_repo
         .find_by_id(&uid)
@@ -76,10 +86,6 @@ async fn update_password(
 
     verify_password(&current.password_hash, &payload.old_password)
         .map_err(|_| AppError::Unauthorized(INVALID_OLD_PASSWORD.into()))?;
-
-    if payload.new_password.len() < MIN_PASSWORD_LENGTH {
-        return Err(AppError::UnprocessableEntity(PASSWORD_TOO_SHORT.into()));
-    }
 
     let new_hash = hash_password(&payload.new_password)?;
     user_repo.update_password(&uid, &new_hash).await?;

@@ -6,47 +6,41 @@ mod errors;
 mod handlers;
 mod models;
 
-use crate::config::AppConfig;
-use crate::database::mongodb::{UserRepository, init_db};
-use crate::database::redis::{TokenBlacklist, init_redis};
-use crate::handlers::{admin_scope, auth_scope, user_scope};
+use crate::config::app_config::AppConfig;
+use crate::config::rustls_config::load_rustls_config;
+use crate::database::mongodb::{init_db, UserRepository};
+use crate::database::redis::{init_redis, TokenBlacklist};
+use crate::handlers::{admin_scope, auth_scope, health_check, user_scope};
 use actix_web::web::Data;
 use actix_web::{App, HttpServer};
-use rustls::ServerConfig;
-use rustls_pemfile::{certs, pkcs8_private_keys};
-use std::fs::File;
-use std::io::BufReader;
-
-fn load_rustls_config(
-    cert_path: &str,
-    key_path: &str,
-) -> Result<ServerConfig, Box<dyn std::error::Error>> {
-    let cert_file = &mut BufReader::new(File::open(cert_path)?);
-    let key_file = &mut BufReader::new(File::open(key_path)?);
-
-    let cert_chain = certs(cert_file).collect::<Result<Vec<_>, _>>()?;
-    let mut keys = pkcs8_private_keys(key_file).collect::<Result<Vec<_>, _>>()?;
-
-    let config = ServerConfig::builder()
-        .with_no_client_auth()
-        .with_single_cert(cert_chain, keys.remove(0).into())?;
-
-    Ok(config)
-}
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[actix_web::main]
 async fn main() -> Result<(), std::io::Error> {
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
+        )
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+
     rustls::crypto::aws_lc_rs::default_provider()
         .install_default()
         .expect("Failed to install rustls crypto provider");
-    
+
+    tracing::info!("Loading configuration...");
     let cfg = AppConfig::from_env().expect("Failed to load configuration");
+
+    tracing::info!("Connecting to MongoDB at {}...", cfg.mongo_uri);
     let db = init_db(&cfg.mongo_uri, &cfg.mongo_db)
         .await
         .expect("Failed to connect to database");
+
+    tracing::info!("Connecting to Redis at {}...", cfg.redis_uri);
     let redis_conn = init_redis(&cfg.redis_uri)
         .await
         .expect("Failed to connect to Redis");
+
     let user_repo = UserRepository::new(&db);
     let blacklist = TokenBlacklist::new(redis_conn);
 
@@ -57,9 +51,11 @@ async fn main() -> Result<(), std::io::Error> {
 
     let server = HttpServer::new(move || {
         App::new()
+            .wrap(tracing_actix_web::TracingLogger::default())
             .app_data(Data::new(cfg.clone()))
             .app_data(Data::new(user_repo.clone()))
             .app_data(Data::new(blacklist.clone()))
+            .service(health_check)
             .service(auth_scope())
             .service(user_scope())
             .service(admin_scope())
@@ -67,12 +63,16 @@ async fn main() -> Result<(), std::io::Error> {
 
     let server = match (&ssl_cert_path, &ssl_key_path) {
         (Some(cert_path), Some(key_path)) => {
-            println!("Starting HTTPS server at https://{}:{}", host, port);
+            tracing::info!("Starting HTTPS server at https://{}:{}", host, port);
             let tls_config =
                 load_rustls_config(cert_path, key_path).expect("Failed to load SSL certificates");
             server.bind_rustls_0_23((host, port), tls_config)?
         }
-        _ => panic!("Missing SSL certificates paths"),
+        _ => {
+            tracing::warn!("SSL certificates not configured, falling back to HTTP");
+            tracing::info!("Starting HTTP server at http://{}:{}", host, port);
+            server.bind((host, port))?
+        }
     };
 
     server.run().await

@@ -9,6 +9,7 @@ use crate::models::user::User;
 use actix_web::web::{Data, Json, Path};
 use actix_web::{HttpResponse, Scope, delete, get, post, put};
 use mongodb::bson::oid::ObjectId;
+use validator::Validate;
 
 #[get("/users")]
 async fn get_all_users(
@@ -39,6 +40,9 @@ async fn create_user(
     user_repo: Data<UserRepository>,
     payload: Json<CreateUserRequest>,
 ) -> Result<HttpResponse, AppError> {
+    payload.validate()
+        .map_err(|e| AppError::BadRequest(e.to_string()))?;
+
     if user_repo.find_by_email(&payload.email).await?.is_some() {
         return Err(AppError::Conflict(EMAIL_ALREADY_EXISTS.into()));
     }
@@ -93,6 +97,9 @@ async fn update_user(
     id: Path<String>,
     payload: Json<UpdateUserRequest>,
 ) -> Result<HttpResponse, AppError> {
+    payload.validate()
+        .map_err(|e| AppError::BadRequest(e.to_string()))?;
+
     let object_id = ObjectId::parse_str(id.as_str())
         .map_err(|_| AppError::BadRequest(INVALID_USER_ID.into()))?;
 
@@ -167,9 +174,9 @@ async fn set_admin(
     user_repo.set_admin(&object_id, payload.is_admin).await?;
 
     let msg = if payload.is_admin {
-        USER_SETED_AS_ADMIN
+        USER_SET_AS_ADMIN
     } else {
-        ADMIN_SETED_AS_USER
+        ADMIN_SET_AS_USER
     };
 
     Ok(HttpResponse::Ok().json(Response::<()> {

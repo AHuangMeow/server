@@ -1,5 +1,5 @@
-use crate::auth::{AuthenticatedUser, generate_token, hash_password, verify_password};
-use crate::config::AppConfig;
+use crate::auth::{generate_token, hash_password, verify_password, AuthenticatedUser};
+use crate::config::app_config::AppConfig;
 use crate::constants::*;
 use crate::database::mongodb::UserRepository;
 use crate::database::redis::TokenBlacklist;
@@ -7,10 +7,11 @@ use crate::errors::AppError;
 use crate::models::request::{LoginRequest, RegisterRequest};
 use crate::models::response::{Response, Token};
 use crate::models::user::User;
-use actix_web::web::{Data, Json, scope};
-use actix_web::{HttpResponse, post};
+use actix_web::web::{scope, Data, Json};
+use actix_web::{post, HttpResponse};
 use mongodb::bson::oid::ObjectId;
 use time::OffsetDateTime;
+use validator::Validate;
 
 #[post("/register")]
 async fn register(
@@ -18,12 +19,12 @@ async fn register(
     cfg: Data<AppConfig>,
     payload: Json<RegisterRequest>,
 ) -> Result<HttpResponse, AppError> {
+    payload
+        .validate()
+        .map_err(|e| AppError::BadRequest(e.to_string()))?;
+
     if user_repo.find_by_email(&payload.email).await?.is_some() {
         return Err(AppError::Conflict(EMAIL_ALREADY_EXISTS.into()));
-    }
-
-    if payload.password.len() < MIN_PASSWORD_LENGTH {
-        return Err(AppError::UnprocessableEntity(PASSWORD_TOO_SHORT.into()));
     }
 
     let hash = hash_password(&payload.password)?;
@@ -50,6 +51,10 @@ async fn login(
     cfg: Data<AppConfig>,
     payload: Json<LoginRequest>,
 ) -> Result<HttpResponse, AppError> {
+    payload
+        .validate()
+        .map_err(|e| AppError::BadRequest(e.to_string()))?;
+
     let user = user_repo
         .find_by_email(&payload.email)
         .await?

@@ -1,7 +1,7 @@
-use crate::config::AppConfig;
+use crate::config::app_config::AppConfig;
 use crate::constants::AUTH_REQUIRED;
 use crate::errors::AppError;
-use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
+use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
 
@@ -9,7 +9,7 @@ use time::{Duration, OffsetDateTime};
 pub struct Claims {
     pub sub: String, // user id
     pub exp: usize,
-    pub iat: usize,  // issued at
+    pub iat: usize, // issued at
 }
 
 pub fn generate_token(cfg: &AppConfig, user_id: &str) -> Result<String, AppError> {
@@ -37,7 +37,7 @@ pub fn decode_token(cfg: &AppConfig, token: &str) -> Result<Claims, AppError> {
     )
     .map(|data| data.claims)
     .map_err(|e| {
-        eprintln!("Token decode error: {:?}", e);
+        tracing::warn!("Token decode error: {:?}", e);
         AppError::Unauthorized(AUTH_REQUIRED.into())
     })
 }
