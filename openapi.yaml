@@ -1,0 +1,712 @@
+openapi: 3.0.3
+info:
+  title: Building Server API
+  description: RESTful API for user management with authentication and authorization
+  version: 0.1.0
+  contact:
+    name: API Support
+  license:
+    name: MIT
+
+servers:
+  - url: https://localhost:8443
+    description: Production HTTPS server
+  - url: http://localhost:8080
+    description: Development HTTP server
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: Authentication
+    description: User authentication operations
+  - name: User
+    description: User profile management (requires authentication)
+  - name: Admin
+    description: User administration (requires admin privileges)
+
+components:
+  schemas:
+    Response:
+      type: object
+      required:
+        - msg
+      properties:
+        msg:
+          type: string
+          description: Response message
+        data:
+          description: Optional response data
+
+    ErrorResponse:
+      type: object
+      required:
+        - msg
+      properties:
+        msg:
+          type: string
+          description: Error message
+
+    RegisterRequest:
+      type: object
+      required:
+        - email
+        - username
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: User email address
+          example: user@example.com
+        username:
+          type: string
+          minLength: 3
+          maxLength: 30
+          description: Username
+          example: johndoe
+        password:
+          type: string
+          minLength: 8
+          format: password
+          description: User password (at least 8 characters)
+          example: securePassword123
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: User email address
+          example: user@example.com
+        password:
+          type: string
+          format: password
+          description: User password
+          example: securePassword123
+
+    TokenResponse:
+      allOf:
+        - $ref: '#/components/schemas/Response'
+        - type: object
+          properties:
+            data:
+              type: object
+              required:
+                - token
+              properties:
+                token:
+                  type: string
+                  description: JWT authentication token
+                  example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+    UpdateEmailRequest:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+          description: New email address
+          example: newemail@example.com
+
+    UpdateUsernameRequest:
+      type: object
+      required:
+        - username
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 30
+          description: New username
+          example: newusername
+
+    UpdatePasswordRequest:
+      type: object
+      required:
+        - old_password
+        - new_password
+      properties:
+        old_password:
+          type: string
+          format: password
+          description: Current password
+          example: oldPassword123
+        new_password:
+          type: string
+          minLength: 8
+          format: password
+          description: New password (at least 8 characters)
+          example: newPassword456
+
+    AboutMe:
+      type: object
+      required:
+        - email
+        - username
+      properties:
+        email:
+          type: string
+          format: email
+          description: User email address
+          example: user@example.com
+        username:
+          type: string
+          description: Username
+          example: johndoe
+
+    AboutMeResponse:
+      allOf:
+        - $ref: '#/components/schemas/Response'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/AboutMe'
+
+    UserInfo:
+      type: object
+      required:
+        - id
+        - email
+        - username
+        - is_admin
+      properties:
+        id:
+          type: string
+          description: User ObjectId
+          example: 507f1f77bcf86cd799439011
+        email:
+          type: string
+          format: email
+          description: User email address
+          example: user@example.com
+        username:
+          type: string
+          description: Username
+          example: johndoe
+        is_admin:
+          type: boolean
+          description: Admin status
+          example: false
+
+    UserInfoResponse:
+      allOf:
+        - $ref: '#/components/schemas/Response'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/UserInfo'
+
+    UserListResponse:
+      allOf:
+        - $ref: '#/components/schemas/Response'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/UserInfo'
+
+    CreateUserRequest:
+      type: object
+      required:
+        - email
+        - username
+        - password
+        - is_admin
+      properties:
+        email:
+          type: string
+          format: email
+          description: User email address
+          example: newuser@example.com
+        username:
+          type: string
+          minLength: 3
+          maxLength: 30
+          description: Username
+          example: newuser
+        password:
+          type: string
+          minLength: 8
+          format: password
+          description: User password (at least 8 characters)
+          example: password123
+        is_admin:
+          type: boolean
+          description: Admin status
+          example: false
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          description: New email address (optional)
+          example: updated@example.com
+        username:
+          type: string
+          minLength: 3
+          maxLength: 30
+          description: New username (optional)
+          example: updateduser
+        password:
+          type: string
+          minLength: 8
+          format: password
+          description: New password (optional, at least 8 characters)
+          example: newPassword123
+
+    SetRoleRequest:
+      type: object
+      required:
+        - is_admin
+      properties:
+        is_admin:
+          type: boolean
+          description: Set admin status
+          example: true
+
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - timestamp
+      properties:
+        status:
+          type: string
+          description: Health status
+          example: ok
+        timestamp:
+          type: integer
+          format: int64
+          description: Unix timestamp
+          example: 1703174400
+
+  responses:
+    Unauthorized:
+      description: Unauthorized - Invalid or missing authentication token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            msg: Invalid or expired token
+
+    Forbidden:
+      description: Forbidden - Admin privileges required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            msg: Admin access required
+
+    BadRequest:
+      description: Bad Request - Invalid input data
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            msg: Validation error
+
+    NotFound:
+      description: Not Found - Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            msg: User not found
+
+    Conflict:
+      description: Conflict - Resource already exists
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            msg: Email already exists
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Check if the server is running and healthy
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register new user
+      description: Create a new user account
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '200':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: Authenticate user and receive JWT token
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: User logout
+      description: Invalidate current JWT token (adds to blacklist)
+      operationId: logout
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+              example:
+                msg: Logout successful
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /user/me:
+    get:
+      tags:
+        - User
+      summary: Get current user profile
+      description: Retrieve authenticated user's profile information
+      operationId: getMe
+      responses:
+        '200':
+          description: Profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AboutMeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /user/email:
+    put:
+      tags:
+        - User
+      summary: Update user email
+      description: Update authenticated user's email address
+      operationId: updateEmail
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateEmailRequest'
+      responses:
+        '200':
+          description: Email updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+              example:
+                msg: Email updated successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /user/username:
+    put:
+      tags:
+        - User
+      summary: Update username
+      description: Update authenticated user's username
+      operationId: updateUsername
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUsernameRequest'
+      responses:
+        '200':
+          description: Username updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+              example:
+                msg: Username updated successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /user/password:
+    put:
+      tags:
+        - User
+      summary: Update password
+      description: Update authenticated user's password
+      operationId: updatePassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePasswordRequest'
+      responses:
+        '200':
+          description: Password updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+              example:
+                msg: Password updated successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /admin/users:
+    get:
+      tags:
+        - Admin
+      summary: Get all users
+      description: Retrieve a list of all users (admin only)
+      operationId: getAllUsers
+      responses:
+        '200':
+          description: Users retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags:
+        - Admin
+      summary: Create new user
+      description: Create a new user account (admin only)
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+              example:
+                msg: User created successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /admin/users/{id}:
+    get:
+      tags:
+        - Admin
+      summary: Get user by ID
+      description: Retrieve a specific user's information by ID (admin only)
+      operationId: getUserById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User ObjectId
+          schema:
+            type: string
+            example: 507f1f77bcf86cd799439011
+      responses:
+        '200':
+          description: User retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserInfoResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Admin
+      summary: Update user
+      description: Update a user's information (admin only)
+      operationId: updateUser
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User ObjectId
+          schema:
+            type: string
+            example: 507f1f77bcf86cd799439011
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+              example:
+                msg: User updated successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+    delete:
+      tags:
+        - Admin
+      summary: Delete user
+      description: Delete a user account (admin only)
+      operationId: deleteUser
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User ObjectId
+          schema:
+            type: string
+            example: 507f1f77bcf86cd799439011
+      responses:
+        '200':
+          description: User deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+              example:
+                msg: User deleted successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/users/{id}/admin:
+    put:
+      tags:
+        - Admin
+      summary: Set user admin role
+      description: Grant or revoke admin privileges for a user (admin only)
+      operationId: setAdmin
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User ObjectId
+          schema:
+            type: string
+            example: 507f1f77bcf86cd799439011
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetRoleRequest'
+      responses:
+        '200':
+          description: User role updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+              example:
+                msg: User set as admin
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
