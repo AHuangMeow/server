@@ -33,7 +33,8 @@ if [ -d "certs" ] && [ "$(ls -A certs)" ]; then
     if [ "$upload_certs" = "y" ]; then
         ssh ${REMOTE_USER}@${REMOTE_HOST} "mkdir -p ${REMOTE_PATH}/certs"
         scp certs/* ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PATH}/certs/
-        echo "✅ 证书文件已上传"
+        ssh ${REMOTE_USER}@${REMOTE_HOST} "chmod 644 ${REMOTE_PATH}/certs/*.pem"
+        echo "✅ 证书文件已上传并设置权限"
     fi
 fi
 
@@ -56,6 +57,12 @@ fi
 if [ ! -d certs ]; then
     mkdir -p certs
     echo "📁 已创建 certs 目录"
+else
+    # 确保证书文件具有正确的权限（容器内用户 UID 1000 需要读取权限）
+    if [ -f certs/cert.pem ] || [ -f certs/key.pem ]; then
+        chmod 644 certs/*.pem 2>/dev/null || true
+        echo "✅ 已设置证书文件权限"
+    fi
 fi
 
 # 停止旧容器

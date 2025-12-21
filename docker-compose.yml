@@ -1,23 +1,9 @@
-version: '3.8'
-
 services:
   server:
-    build: .
+    image: rust-server:latest
     container_name: rust-server
     ports:
       - "8080:8080"
-    environment:
-      - APP_HOST=0.0.0.0
-      - APP_PORT=8080
-      - MONGO_URI=mongodb://mongodb:27017
-      - MONGO_DB=actix_server
-      - REDIS_URI=redis://redis:6379
-      - JWT_SECRET=${JWT_SECRET:-your-secret-key-change-this}
-      - JWT_EXP_HOURS=${JWT_EXP_HOURS:-24}
-      # SSL 配置（可选）
-      # 如果不使用 HTTPS，注释掉以下两行（推荐使用 Nginx 反向代理处理 HTTPS）
-      # - SSL_CERT_PATH=/app/certs/cert.pem
-      # - SSL_KEY_PATH=/app/certs/key.pem
     depends_on:
       - mongodb
       - redis
@@ -25,19 +11,14 @@ services:
     networks:
       - app-network
     volumes:
-      # 挂载证书目录（如果需要 HTTPS）
-      # 方式1: 从宿主机挂载证书（默认，取消注释使用）
-      # - ./certs:/app/certs:ro
-      # 方式2: 使用命名卷（在容器内生成证书）
-      # - certs_data:/app/certs
+      - ./certs:/app/certs:ro
+      - ./.env:/app/.env:ro
 
   mongodb:
-    image: mongo:7
-    container_name: mongodb
+    image: mongo:latest
+    container_name: rust-server-mongodb
     ports:
       - "27017:27017"
-    environment:
-      - MONGO_INITDB_DATABASE=actix_server
     volumes:
       - mongodb_data:/data/db
     restart: unless-stopped
@@ -45,8 +26,8 @@ services:
       - app-network
 
   redis:
-    image: redis:7-alpine
-    container_name: redis
+    image: redis:latest
+    container_name: rust-server-redis
     ports:
       - "6379:6379"
     volumes:
@@ -58,7 +39,6 @@ services:
 volumes:
   mongodb_data:
   redis_data:
-  # certs_data:  # 如果使用容器内生成证书，取消注释
 
 networks:
   app-network:

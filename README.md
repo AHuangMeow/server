@@ -91,8 +91,6 @@ nano .env  # 修改配置
 docker-compose restart
 ```
 
-详细部署文档请查看 [CERTIFICATES.md](CERTIFICATES.md)
-
 ## 📚 API 文档
 
 ### 健康检查
@@ -137,9 +135,9 @@ PUT    /admin/users/:id/admin # 设置用户权限
 |--------|------|--------|
 | `APP_HOST` | 服务器监听地址 | `0.0.0.0` |
 | `APP_PORT` | 服务器端口 | `8080` |
-| `MONGO_URI` | MongoDB 连接字符串 | `mongodb://localhost:27017` |
+| `MONGO_URI` | MongoDB 连接字符串 | `mongodb://mongodb:27017` |
 | `MONGO_DB` | 数据库名称 | `actix_server` |
-| `REDIS_URI` | Redis 连接字符串 | `redis://localhost:6379` |
+| `REDIS_URI` | Redis 连接字符串 | `redis://redis:6379` |
 | `JWT_SECRET` | JWT 密钥 | - |
 | `JWT_EXP_HOURS` | JWT 过期时间（小时） | `24` |
 | `SSL_CERT_PATH` | SSL 证书路径 (可选) | - |
