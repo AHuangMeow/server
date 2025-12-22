@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 actix-web = { version = "4.12.1", features = ["rustls-0_23"] }
+actix-cors = "0.7"
 bcrypt = "0.17.1"
 dotenvy = "0.15.7"
 futures = "0.3.31"

@@ -12,6 +12,7 @@ use crate::config::rustls_config::load_rustls_config;
 use crate::database::mongodb::{init_mongodb, UserRepository};
 use crate::database::redis::{init_redis, TokenBlacklist};
 use crate::handlers::{admin_scope, auth_scope, health_check, user_scope};
+use actix_cors::Cors;
 use actix_web::web::Data;
 use actix_web::{App, HttpServer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -52,6 +53,7 @@ async fn main() -> Result<(), std::io::Error> {
 
     let server = HttpServer::new(move || {
         App::new()
+            .wrap(Cors::permissive())
             .wrap(tracing_actix_web::TracingLogger::default())
             .app_data(Data::new(cfg.clone()))
             .app_data(Data::new(user_repo.clone()))
