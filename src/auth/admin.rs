@@ -62,6 +62,10 @@ impl FromRequest for AdminUser {
                 .map_err(|_| AppError::Unauthorized(AUTH_REQUIRED.into()))?
                 .ok_or_else(|| AppError::Unauthorized(AUTH_REQUIRED.into()))?;
 
+            if user.token_version != claims.ver {
+                return Err(AppError::Unauthorized(AUTH_REQUIRED.into()).into());
+            }
+
             if !user.is_admin {
                 return Err(AppError::Forbidden(PERMISSION_DENIED.into()).into());
             }

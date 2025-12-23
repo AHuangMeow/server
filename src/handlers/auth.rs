@@ -37,10 +37,11 @@ async fn register(
         username: payload.username.clone(),
         password_hash: hash,
         is_admin: false,
+        token_version: 0,
     };
     user_repo.create(&new_user).await?;
 
-    let token = generate_token(&cfg, &user_id.to_hex())?;
+    let token = generate_token(&cfg, &user_id.to_hex(), new_user.token_version)?;
     Ok(HttpResponse::Ok().json(Response {
         msg: REGISTER_SUCCESS.into(),
         data: Some(Token { token }),
@@ -64,8 +65,14 @@ async fn login(
 
     verify_password(&user.password_hash, &payload.password)?;
 
-    let id = user.id.to_hex();
-    let token = generate_token(&cfg, &id)?;
+    let user_id = user.id.clone();
+    let new_token_version = user.token_version + 1;
+    user_repo
+        .update_token_version(&user_id, new_token_version)
+        .await?;
+
+    let id = user_id.to_hex();
+    let token = generate_token(&cfg, &id, new_token_version)?;
     Ok(HttpResponse::Ok().json(Response {
         msg: LOGIN_SUCCESS.into(),
         data: Some(Token { token }),

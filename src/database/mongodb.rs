@@ -94,4 +94,18 @@ impl UserRepository {
             .await?;
         Ok(())
     }
+
+    pub async fn update_token_version(
+        &self,
+        id: &ObjectId,
+        token_version: i32,
+    ) -> Result<(), AppError> {
+        self.collection
+            .update_one(
+                doc! { "_id": id },
+                doc! { "$set": { "token_version": token_version } },
+            )
+            .await?;
+        Ok(())
+    }
 }

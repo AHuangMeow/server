@@ -56,6 +56,7 @@ async fn create_user(
         username: payload.username.clone(),
         password_hash,
         is_admin: payload.is_admin,
+        token_version: 0,
     };
 
     user_repo.create(&user).await?;

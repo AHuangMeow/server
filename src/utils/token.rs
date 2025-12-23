@@ -5,14 +5,20 @@ use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation}
 use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
 
+fn default_claims_ver() -> i32 {
+    0
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
     pub sub: String, // user id
     pub exp: usize,
     pub iat: usize, // issued at
+    #[serde(default = "default_claims_ver")]
+    pub ver: i32,
 }
 
-pub fn generate_token(cfg: &AppConfig, user_id: &str) -> Result<String, AppError> {
+pub fn generate_token(cfg: &AppConfig, user_id: &str, token_version: i32) -> Result<String, AppError> {
     let now = OffsetDateTime::now_utc().unix_timestamp() as usize;
     let exp =
         (OffsetDateTime::now_utc() + Duration::hours(cfg.jwt_exp_hours)).unix_timestamp() as usize;
@@ -20,6 +26,7 @@ pub fn generate_token(cfg: &AppConfig, user_id: &str) -> Result<String, AppError
         sub: user_id.into(),
         exp,
         iat: now,
+        ver: token_version,
     };
     encode(
         &Header::default(),
