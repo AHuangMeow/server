@@ -13,32 +13,31 @@ use crate::database::mongodb::{init_mongodb, UserRepository};
 use crate::database::redis::{init_redis, TokenBlacklist};
 use crate::handlers::{admin_scope, auth_scope, health_check, user_scope};
 use actix_cors::Cors;
-use actix_web::web::Data;
-use actix_web::{App, HttpServer};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use actix_web::{web::Data, App, HttpServer};
+use tracing::{info, warn};
+use tracing_actix_web::TracingLogger;
+use tracing_subscriber::{fmt::layer, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 #[actix_web::main]
 async fn main() -> Result<(), std::io::Error> {
     tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
+        .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()))
+        .with(layer())
         .init();
 
     rustls::crypto::aws_lc_rs::default_provider()
         .install_default()
         .expect("Failed to install rustls crypto provider");
 
-    tracing::info!("Loading configuration...");
+    info!("Loading configuration...");
     let cfg = AppConfig::from_env().expect("Failed to load configuration");
 
-    tracing::info!("Connecting to MongoDB at {}...", cfg.mongo_uri);
+    info!("Connecting to MongoDB at {}...", cfg.mongo_uri);
     let db = init_mongodb(&cfg.mongo_uri, &cfg.mongo_db)
         .await
         .expect("Failed to connect to database");
 
-    tracing::info!("Connecting to Redis at {}...", cfg.redis_uri);
+    info!("Connecting to Redis at {}...", cfg.redis_uri);
     let redis_conn = init_redis(&cfg.redis_uri)
         .await
         .expect("Failed to connect to Redis");
@@ -54,7 +53,7 @@ async fn main() -> Result<(), std::io::Error> {
     let server = HttpServer::new(move || {
         App::new()
             .wrap(Cors::permissive())
-            .wrap(tracing_actix_web::TracingLogger::default())
+            .wrap(TracingLogger::default())
             .app_data(Data::new(cfg.clone()))
             .app_data(Data::new(user_repo.clone()))
             .app_data(Data::new(blacklist.clone()))
@@ -66,14 +65,14 @@ async fn main() -> Result<(), std::io::Error> {
 
     let server = match (&ssl_cert_path, &ssl_key_path) {
         (Some(cert_path), Some(key_path)) => {
-            tracing::info!("Starting HTTPS server at https://{}:{}", host, port);
+            info!("Starting HTTPS server at https://{}:{}", host, port);
             let tls_config =
                 load_rustls_config(cert_path, key_path).expect("Failed to load SSL certificates");
             server.bind_rustls_0_23((host, port), tls_config)?
         }
         _ => {
-            tracing::warn!("SSL certificates not configured, falling back to HTTP");
-            tracing::info!("Starting HTTP server at http://{}:{}", host, port);
+            warn!("SSL certificates not configured, falling back to HTTP");
+            info!("Starting HTTP server at http://{}:{}", host, port);
             server.bind((host, port))?
         }
     };

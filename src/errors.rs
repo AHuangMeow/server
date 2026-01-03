@@ -1,8 +1,9 @@
 use crate::constants::{INTERNAL_SERVER_ERROR, INVALID_USER_ID};
 use crate::models::response::Response;
 
-use actix_web::{HttpResponse, ResponseError};
+use actix_web::{http::StatusCode, HttpResponse, ResponseError};
 use thiserror::Error;
+use tracing::error;
 
 #[derive(Debug, Error)]
 pub enum AppError {
@@ -32,47 +33,36 @@ impl From<mongodb::bson::oid::Error> for AppError {
 
 impl ResponseError for AppError {
     fn error_response(&self) -> HttpResponse {
+        fn json_error(status: StatusCode, msg: String) -> HttpResponse {
+            HttpResponse::build(status).json(Response::<()> { msg, data: None })
+        }
+
         match self {
-            AppError::BadRequest(msg) => HttpResponse::BadRequest().json(Response::<()> {
-                msg: msg.into(),
-                data: None,
-            }),
-            AppError::Unauthorized(msg) => HttpResponse::Unauthorized().json(Response::<()> {
-                msg: msg.into(),
-                data: None,
-            }),
-            AppError::Forbidden(msg) => HttpResponse::Forbidden().json(Response::<()> {
-                msg: msg.into(),
-                data: None,
-            }),
-            AppError::NotFound(msg) => HttpResponse::NotFound().json(Response::<()> {
-                msg: msg.into(),
-                data: None,
-            }),
-            AppError::Conflict(msg) => HttpResponse::Conflict().json(Response::<()> {
-                msg: msg.into(),
-                data: None,
-            }),
+            AppError::BadRequest(msg) => json_error(StatusCode::BAD_REQUEST, msg.into()),
+            AppError::Unauthorized(msg) => json_error(StatusCode::UNAUTHORIZED, msg.into()),
+            AppError::Forbidden(msg) => json_error(StatusCode::FORBIDDEN, msg.into()),
+            AppError::NotFound(msg) => json_error(StatusCode::NOT_FOUND, msg.into()),
+            AppError::Conflict(msg) => json_error(StatusCode::CONFLICT, msg.into()),
             AppError::Database(e) => {
-                tracing::error!("Database error: {:?}", e);
-                HttpResponse::InternalServerError().json(Response::<()> {
-                    msg: INTERNAL_SERVER_ERROR.into(),
-                    data: None,
-                })
+                error!("Database error: {:?}", e);
+                json_error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    INTERNAL_SERVER_ERROR.into(),
+                )
             }
             AppError::Redis(e) => {
-                tracing::error!("Redis error: {:?}", e);
-                HttpResponse::InternalServerError().json(Response::<()> {
-                    msg: INTERNAL_SERVER_ERROR.into(),
-                    data: None,
-                })
+                error!("Redis error: {:?}", e);
+                json_error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    INTERNAL_SERVER_ERROR.into(),
+                )
             }
             AppError::Internal => {
-                tracing::error!("Internal server error");
-                HttpResponse::InternalServerError().json(Response::<()> {
-                    msg: INTERNAL_SERVER_ERROR.into(),
-                    data: None,
-                })
+                error!("Internal server error");
+                json_error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    INTERNAL_SERVER_ERROR.into(),
+                )
             }
         }
     }
